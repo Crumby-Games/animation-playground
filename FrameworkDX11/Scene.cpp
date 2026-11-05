@@ -1,6 +1,6 @@
 #include "Scene.h"
 #include "DDSTextureLoader.h"
-
+#include "Animation.h"
 
 HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& device, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& context, DX11Renderer* renderer)
 {
@@ -14,10 +14,31 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     HRESULT hr;
 
     m_ctx.Init(device.Get(), context.Get(), renderer);
-    //bool ok = m_sceneobject.LoadSphere(m_ctx);
-    bool ok = m_sceneobject.LoadGLTF(m_ctx, L"Resources\\sphere.gltf");
-    //bool ok = m_sceneobject.LoadGLTF(m_ctx, L"Resources\\FlightHelmet.gltf");
-    //bool ok = m_sceneobject.LoadGLTFWithSkeleton(m_ctx, L"Resources\\Fox.gltf");
+    //bool ok = m_sceneobject.LoadGLTF(m_ctx, L"Resources\\sphere.gltf");
+    SceneNode* body = m_sceneobject.CreateRootNode();
+    if (!body) return E_FAIL;
+    body->LoadSphere(m_ctx);
+
+    body->AddTranslation({ 0,0,2 });
+    SceneNode* head = body->CreateChildNode();
+    head->AddTranslation({ 0,1.5,0 });
+    head->AddScale(0.75);
+    head->LoadSphere(m_ctx);
+   
+    
+    AnimationChannel channel = { AnimationChannel::TRANSLATION, 0,0 };
+    AnimationSampler sampler = {
+        AnimationSampler::LINEAR,
+        std::vector<float>({ 0, 0.75 }),
+        std::vector<XMFLOAT3>({ {0,0,0},{0,5,0} })
+    };
+    m_animation.m_channels.push_back(std::move(channel));
+    m_animation.m_samplers.push_back(std::move(sampler));
+    //animation.m_channels.emplace_back(AnimationChannel::TRANSLATION);
+
+
+    
+    
 
     m_pCamera = new Camera(XMFLOAT3(0, 0, -6), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
     
@@ -90,6 +111,27 @@ void Scene::setupLightProperties()
 
 void Scene::update(const float deltaTime)
 {
+    m_t += deltaTime;
+    for (auto& channel : m_animation.m_channels) {
+        auto& sampler = m_animation.m_samplers[channel.samplerIndex];
+        int i0 = 0;
+        do {
+            float timestamp = sampler.timestamps[i0];
+            if (m_t > timestamp) break;
+        } while (i0 < sampler.timestamps.size());
+        int i1 = min(i0 + 1, sampler.timestamps.size() - 1);
+        switch (channel.path) {
+        case AnimationChannel::TRANSLATION:
+            //calculate translation between frames i0 and i1
+            break;
+        }
+    }
+
+
+    //const XMFLOAT3 rotation = { 1.5, -2, 1 };
+    //m_sceneobject.GetRootNode(0)->AddMatrix(XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&rotation) * deltaTime));
+
+
     // note the pixel shader and the vertex shader have been set by the renderer class calling this method
     m_pImmediateContext->PSSetShaderResources(0, 1, &m_pTextureDiffuse);
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);

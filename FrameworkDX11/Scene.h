@@ -57,6 +57,7 @@ public:
 	LightPropertiesConstantBuffer m_lightProperties;
 	IRenderingContext m_ctx;
 	SceneGraph m_sceneobject;
+	Animation m_animation;
 
 
 private:
@@ -67,7 +68,8 @@ private:
 	ID3D11ShaderResourceView* m_pTextureAmbientOcclusion;
 	ID3D11ShaderResourceView* m_pTextureSpecularIBL;
 	ID3D11ShaderResourceView* m_pTextureDiffuseIBL;
-
+	
+	float m_t = 0;
 	ID3D11SamplerState* m_pSamplerLinear;
 };
 
