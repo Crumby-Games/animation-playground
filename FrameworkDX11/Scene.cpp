@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "DDSTextureLoader.h"
 #include "Animation.h"
+#include <iostream>
 
 HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& device, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& context, DX11Renderer* renderer)
 {
@@ -29,8 +30,8 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     AnimationChannel channel = { AnimationChannel::TRANSLATION, 0,0 };
     AnimationSampler sampler = {
         AnimationSampler::LINEAR,
-        std::vector<float>({ 0.0f, 1.0f }),
-        std::vector<XMFLOAT3>({ {0,0,0},{0,5,0} })
+        std::vector<float>({ 0.0f, 10.0f }),
+        std::vector<XMFLOAT3>({ {0,0,0},{0,3,0} })
     };
     m_animation.m_channels.push_back(std::move(channel));
     m_animation.m_samplers.push_back(std::move(sampler));
@@ -113,6 +114,10 @@ void Scene::setupLightProperties()
 void Scene::update(const float deltaTime)
 {
     m_t += deltaTime;
+
+    SceneNode* body = m_sceneobject.GetRootNode(0);
+    SceneNode* head = body->GetChildNode(0);
+    m_animation.ApplyAnimationChannel(body, 0, m_t);
 
 
     //const XMFLOAT3 rotation = { 1.5, -2, 1 };

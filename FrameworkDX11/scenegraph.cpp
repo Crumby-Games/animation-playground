@@ -1960,6 +1960,7 @@ void SceneNode::AddRotationQuaternion(const std::vector<double>& vec)
 
 void SceneNode::AddTranslation(const std::vector<double>& vec)
 {
+
     // --- Error Checking ---
     if (vec.size() != 3)
     {

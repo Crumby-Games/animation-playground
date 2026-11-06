@@ -1,7 +1,11 @@
 #include "Animation.h"
 #include <algorithm>
+#include "scenegraph.h"
+#include <iostream>
 
 using namespace std;
+
+#define lerp(a, b, w) a + (b - a) * w
 
 // Helper to read a vector of data from a glTF accessor
 template<typename T>
@@ -14,6 +18,32 @@ void ReadDataFromAccessor(const tinygltf::Model& model, int accessorIndex, std::
     outData.resize(accessor.count);
     const unsigned char* dataPtr = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
     memcpy(outData.data(), dataPtr, accessor.count * sizeof(T));
+}
+
+void Animation::ApplyAnimationChannel(SceneNode* node, int channel_idx, float time) {
+    auto& channel = m_channels[channel_idx];
+    auto& sampler = m_samplers[channel.samplerIndex];
+    
+    if (time < sampler.timestamps[0] || time > sampler.timestamps[sampler.timestamps.size() - 1])
+        return;
+
+    int i0 = 0;
+    while (i0 < sampler.timestamps.size() - 1) {
+        float timestamp = sampler.timestamps[i0 + 1];
+        if (timestamp > time) break;
+        i0++;
+    }
+    
+    int i1 = min(i0 + 1, int(sampler.timestamps.size() - 1));
+    float w = (sampler.timestamps[i1] - time) / (sampler.timestamps[i1] - sampler.timestamps[i0]);
+    switch (channel.path) {
+    case AnimationChannel::TRANSLATION:
+        XMFLOAT3& k0 = sampler.vec3_values[i0];
+        XMFLOAT3& k1 = sampler.vec3_values[i1];
+        node->SetIdentity();
+        node->AddTranslation({ lerp(k0.x, k1.x, w),lerp(k0.y, k1.y, w),lerp(k0.z, k1.z, w) });
+        break;
+    }
 }
 
 bool Animation::LoadFromGltf(const tinygltf::Model& model, const std::map<int, int>& nodeToJointMap, const unsigned int animationIndex)
@@ -98,3 +128,5 @@ float Animation::GetEndTime() const {
     }
     return endTime;
 }
+
+#undef lerp

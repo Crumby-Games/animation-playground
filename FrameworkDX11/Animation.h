@@ -6,6 +6,8 @@
 #include "tiny_gltf.h" // For loading
 #include <map>
 
+class SceneNode;
+
 // Represents a single animation curve (e.g., the translations for one bone).
 struct AnimationSampler
 {
@@ -31,13 +33,17 @@ class Animation
 {
 public:
     Animation() = default;
+
+    
     // Copy Constructor
     Animation(const Animation& other)
         : m_samplers(other.m_samplers), // This will call std::vector's copy constructor
         m_channels(other.m_channels), // This will call std::vector's copy constructor
         m_name(other.m_name)          // This will call std::string's copy constructor
     {
-    }
+    };
+
+    void ApplyAnimationChannel(SceneNode* node, int channel_idx, float time);
 
     // Loads the first animation from the glTF model.
     bool LoadFromGltf(const tinygltf::Model& model, const std::map<int, int>& nodeToJointMap, const unsigned int animationIndex);

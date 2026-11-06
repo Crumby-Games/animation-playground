@@ -190,6 +190,7 @@ private:
     bool        mIsRootNode;
     XMFLOAT4X4   mLocalMtrx; // <-- Changed from XMMATRIX
     XMFLOAT4X4   mWorldMtrx; // <-- Changed from XMMATRIX
+    XMFLOAT3   mTranslation;
 };
 
 class SceneGraph : public IScene
