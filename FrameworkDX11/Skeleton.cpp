@@ -85,18 +85,18 @@ DirectX::XMFLOAT4X4 GetNodeLocalTransform(const tinygltf::Node& node)
     return ret;
 }
 
-const void Skeleton::GetSkinningMatrices(DirectX::XMMATRIX* matrixlist, unsigned int arraylength) const
+const void Skeleton::GetSkinningMatrices(XMFLOAT4X4* matrixlist, unsigned int arraylength) const
 {
-    unsigned int counter = 0;
-    for (XMFLOAT4X4 mat : m_skinningMatrices)
-    {
+    DirectX::XMMATRIX m;
 
-        DirectX::XMMATRIX m = DirectX::XMLoadFloat4x4(&mat);
+    size_t n = std::min<size_t>(m_skinningMatrices.size(), arraylength);
+
+    for (size_t i = 0; i < n; i += 1)
+    {
+        m = DirectX::XMLoadFloat4x4(&m_skinningMatrices[i]);
         m = DirectX::XMMatrixTranspose(m); // transpose for the GPU
-        matrixlist[counter] = m;
-        counter++;
-        if (counter >= arraylength)
-            break;
+
+        XMStoreFloat4x4(&matrixlist[i], m);
     }
 }
 

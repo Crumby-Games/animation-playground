@@ -40,7 +40,7 @@ public:
     void Update(float deltaTime);
 
     // Returns the final skinning matrices ready to be sent to the GPU.
-    const void GetSkinningMatrices(DirectX::XMMATRIX* matrixlist, unsigned int arraylength) const;
+    const void GetSkinningMatrices(DirectX::XMFLOAT4X4* matrixlist, unsigned int arraylength) const;
     const unsigned int GetBoneCount() { return m_skinningMatrices.size(); }
     const DirectX::XMMATRIX& GetRootTransform() const { return XMLoadFloat4x4(&m_rootTransform); }
 

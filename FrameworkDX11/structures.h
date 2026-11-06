@@ -16,7 +16,7 @@ struct ConstantBuffer
 	XMMATRIX mView;
 	XMMATRIX mProjection;
 	XMFLOAT4 vOutputColor;
-	XMMATRIX boneTransforms[max_bones];
+	XMFLOAT4X4 boneTransforms[max_bones];
 	unsigned int bone_count;
 };
 
