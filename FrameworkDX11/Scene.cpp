@@ -119,11 +119,6 @@ void Scene::update(const float deltaTime)
     SceneNode* head = body->GetChildNode(0);
     m_animation.ApplyAnimationChannel(body, 0, m_t);
 
-
-    //const XMFLOAT3 rotation = { 1.5, -2, 1 };
-    //m_sceneobject.GetRootNode(0)->AddMatrix(XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&rotation) * deltaTime));
-
-
     // note the pixel shader and the vertex shader have been set by the renderer class calling this method
     m_pImmediateContext->PSSetShaderResources(0, 1, &m_pTextureDiffuse);
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
