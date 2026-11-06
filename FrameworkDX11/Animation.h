@@ -43,7 +43,7 @@ public:
     {
     };
 
-    void ApplyAnimationChannel(SceneNode* node, int channel_idx, float time);
+    void ApplyAnimationChannel(int channel_idx, SceneNode* node, float time);
 
     // Loads the first animation from the glTF model.
     bool LoadFromGltf(const tinygltf::Model& model, const std::map<int, int>& nodeToJointMap, const unsigned int animationIndex);

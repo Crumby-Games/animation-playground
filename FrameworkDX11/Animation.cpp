@@ -20,7 +20,7 @@ void ReadDataFromAccessor(const tinygltf::Model& model, int accessorIndex, std::
     memcpy(outData.data(), dataPtr, accessor.count * sizeof(T));
 }
 
-void Animation::ApplyAnimationChannel(SceneNode* node, int channel_idx, float time) {
+void Animation::ApplyAnimationChannel(int channel_idx, SceneNode* node, float time) {
     auto& channel = m_channels[channel_idx];
     auto& sampler = m_samplers[channel.samplerIndex];
     
@@ -37,12 +37,29 @@ void Animation::ApplyAnimationChannel(SceneNode* node, int channel_idx, float ti
     int i1 = min(i0 + 1, int(sampler.timestamps.size() - 1));
     float w = (sampler.timestamps[i1] - time) / (sampler.timestamps[i1] - sampler.timestamps[i0]);
     switch (channel.path) {
-    case AnimationChannel::TRANSLATION:
+    case AnimationChannel::TRANSLATION: {
         XMFLOAT3& k0 = sampler.vec3_values[i0];
         XMFLOAT3& k1 = sampler.vec3_values[i1];
-        node->SetIdentity();
-        node->AddTranslation({ lerp(k0.x, k1.x, w),lerp(k0.y, k1.y, w),lerp(k0.z, k1.z, w) });
+        XMVECTOR result = XMVectorLerp(XMLoadFloat3(&k0), XMLoadFloat3(&k1), w);
+        node->AddTranslation({ XMVectorGetX(result), XMVectorGetY(result),XMVectorGetZ(result) });
         break;
+    }
+
+    case AnimationChannel::ROTATION: {
+        XMFLOAT4& k0 = sampler.vec4_values[i0];
+        XMFLOAT4& k1 = sampler.vec4_values[i1];
+        XMVECTOR result = XMQuaternionSlerp(XMLoadFloat4(&k0), XMLoadFloat4(&k1), w);
+        node->AddRotationQuaternion({ XMVectorGetX(result), XMVectorGetY(result),XMVectorGetZ(result), XMVectorGetW(result )});
+        break;
+    }
+    
+    case AnimationChannel::SCALE: {
+        XMFLOAT3& k0 = sampler.vec3_values[i0];
+        XMFLOAT3& k1 = sampler.vec3_values[i1];
+        XMVECTOR result = XMVectorLerp(XMLoadFloat3(&k0), XMLoadFloat3(&k1), w);
+        node->AddScale({ XMVectorGetX(result), XMVectorGetY(result),XMVectorGetZ(result) });
+    }
+
     }
 }
 

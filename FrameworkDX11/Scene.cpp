@@ -19,22 +19,23 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     SceneNode* body = m_sceneobject.CreateRootNode();
     if (!body) return E_FAIL;
     body->LoadSphere(m_ctx);
-
-    body->AddTranslation({ 0,0,2 });
     SceneNode* head = body->CreateChildNode();
-    head->AddTranslation({ 0,1.5,0 });
-    head->AddScale(0.75);
     head->LoadSphere(m_ctx);
    
     
-    AnimationChannel channel = { AnimationChannel::TRANSLATION, 0,0 };
-    AnimationSampler sampler = {
-        AnimationSampler::LINEAR,
-        std::vector<float>({ 0.0f, 10.0f }),
-        std::vector<XMFLOAT3>({ {0,0,0},{0,3,0} })
+    m_animation.m_channels = {
+        { AnimationChannel::TRANSLATION, 0, 0 },
+        { AnimationChannel::SCALE, 0, 0 }
     };
-    m_animation.m_channels.push_back(std::move(channel));
-    m_animation.m_samplers.push_back(std::move(sampler));
+
+    m_animation.m_samplers = {
+        {
+            AnimationSampler::LINEAR,
+            std::vector<float>({ 0.0f, 6.0f }),
+            std::vector<XMFLOAT3>({ {1,1,1},{1,3,1} }),
+            std::vector<XMFLOAT4>({ {0,0,0,0},{3,3,1,0} })
+        }
+    };
     
     //animation.m_channels.emplace_back(AnimationChannel::TRANSLATION);
 
@@ -116,8 +117,15 @@ void Scene::update(const float deltaTime)
     m_t += deltaTime;
 
     SceneNode* body = m_sceneobject.GetRootNode(0);
+    body->SetIdentity();
+    body->AddTranslation({ 0,0,2 });
     SceneNode* head = body->GetChildNode(0);
-    m_animation.ApplyAnimationChannel(body, 0, m_t);
+    head->SetIdentity();
+    head->AddTranslation({ 0,1.5,0 });
+    head->AddScale(0.75);
+    //m_animation.ApplyAnimationChannel(0, body, m_t);
+    m_animation.ApplyAnimationChannel(0, body, m_t);
+    m_animation.ApplyAnimationChannel(1, head, m_t);
 
     // note the pixel shader and the vertex shader have been set by the renderer class calling this method
     m_pImmediateContext->PSSetShaderResources(0, 1, &m_pTextureDiffuse);
