@@ -1,52 +1,11 @@
 #include "Scene.h"
 #include "DDSTextureLoader.h"
 #include "Animation.h"
-#include <iostream>
 
-// Helper for Translation
-DirectX::XMFLOAT3 BakeTranslationOntoBindPose(const DirectX::XMMATRIX& bindPose, const DirectX::XMFLOAT3& animTranslation)
-{
-    // 1. Create the animation matrix from the vector.
-    DirectX::XMMATRIX animMatrix = DirectX::XMMatrixTranslation(animTranslation.x, animTranslation.y,animTranslation.z);
-    // 2. Bake the animation onto the bind pose.
-    DirectX::XMMATRIX finalLocalMatrix = animMatrix * bindPose;
-    // 3. Extract and return the final position.
-    DirectX::XMFLOAT3 finalPosition;
-    DirectX::XMStoreFloat3(&finalPosition, finalLocalMatrix.r[3]);
-    return finalPosition;
-}
-// Helper for Rotation
-DirectX::XMFLOAT4 BakeRotationOntoBindPose(const DirectX::XMMATRIX& bindPose, const DirectX::XMFLOAT3& axis, float angleRadians)
-{
-    // 1. Create the animation matrix from the axis and angle.
-    DirectX::XMMATRIX animMatrix = DirectX::XMMatrixRotationAxis(DirectX::XMLoadFloat3(&axis), angleRadians);
-    // 2. Bake the animation onto the bind pose.
-    DirectX::XMMATRIX finalLocalMatrix = animMatrix * bindPose;
-    // 3. Decompose to safely extract and return the final rotation quaternion.
-    DirectX::XMVECTOR scale, finalRotationQuat, translation;
-    DirectX::XMMatrixDecompose(&scale, &finalRotationQuat, &translation, finalLocalMatrix);
-    DirectX::XMFLOAT4 finalRotation;
-    DirectX::XMStoreFloat4(&finalRotation, finalRotationQuat);
-    return finalRotation;
-}
-// Helper for Scale
-DirectX::XMFLOAT3 BakeScaleOntoBindPose(const DirectX::XMMATRIX& bindPose,
-    const DirectX::XMFLOAT3& animScale)
-{
-    // 1. Create the animation matrix from the vector.
-    DirectX::XMMATRIX animMatrix = DirectX::XMMatrixScaling(animScale.x,animScale.y, animScale.z);
-    // 2. Bake the animation onto the bind pose.
-    DirectX::XMMATRIX finalLocalMatrix = animMatrix * bindPose;
-    // 3. Decompose to safely extract and return the final scale vector.
-    DirectX::XMVECTOR finalScale, rotation, translation;
-    DirectX::XMMatrixDecompose(&finalScale, &rotation, &translation,finalLocalMatrix);
-    DirectX::XMFLOAT3 finalScaleVec;
-    DirectX::XMStoreFloat3(&finalScaleVec, finalScale);
-    return finalScaleVec;
-}
 
 HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& device, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& context, DX11Renderer* renderer)
 {
+
 	m_pd3dDevice = device;
 	m_pImmediateContext = context;
 
@@ -57,13 +16,11 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     HRESULT hr;
 
     m_ctx.Init(device.Get(), context.Get(), renderer);
-    //bool ok = m_sceneobject.LoadGLTF(m_ctx, L"Resources\\sphere.gltf");
-
     m_sceneobject.LoadGLTFWithSkeleton(m_ctx, L"Resources\\fox.gltf");
 
 
-
     m_pCamera = new Camera(XMFLOAT3(0, 0, -10), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
+    m_pCamera = new Camera(XMFLOAT3(0, 0, -6), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
     
 
     // Create the constant buffer
@@ -73,6 +30,14 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     bd.CPUAccessFlags = 0;
     hr = m_pd3dDevice->CreateBuffer(&bd, nullptr, &m_pConstantBuffer);
+    if (FAILED(hr))
+        return hr;
+
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(CustomConstantBuffer);
+    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    bd.CPUAccessFlags = 0;
+    hr = m_pd3dDevice->CreateBuffer(&bd, nullptr, &m_pCustomConstantBuffer);
     if (FAILED(hr))
         return hr;
 
@@ -89,6 +54,27 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
 
     // load and setup textures
     hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_diff.dds", nullptr, &m_pTextureDiffuse);
+    if (FAILED(hr))
+        return hr;
+
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_metal.dds", nullptr, &m_pTextureMetallic);
+    if (FAILED(hr))
+        return hr;
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_rough.dds", nullptr, &m_pTextureRoughness);
+    if (FAILED(hr))
+        return hr;
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_nor.dds", nullptr, &m_pTextureNormal);
+    if (FAILED(hr))
+        return hr;
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\DiffuseCM.dds", nullptr, &m_pTextureDiffuseIBL);
+    if (FAILED(hr))
+        return hr;
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\SpecularCM.dds", nullptr, &m_pTextureSpecularIBL);
     if (FAILED(hr))
         return hr;
 
@@ -113,7 +99,6 @@ void Scene::cleanUp()
     delete m_pCamera;
 }
 
-
 void Scene::setupLightProperties()
 {
     Light light;
@@ -126,7 +111,9 @@ void Scene::setupLightProperties()
     light.QuadraticAttenuation = 1;
 
     // set up the light
-    XMFLOAT4 LightPosition(m_pCamera->getPosition().x, m_pCamera->getPosition().y, m_pCamera->getPosition().z, 1);
+
+    //XMFLOAT4 LightPosition(m_pCamera->getPosition().x , m_pCamera->getPosition().y, m_pCamera->getPosition().z, 1);
+    XMFLOAT4 LightPosition(5 , 5, -6, 1);
     light.Position = LightPosition;
     
     m_lightProperties.EyePosition = LightPosition;
@@ -135,58 +122,39 @@ void Scene::setupLightProperties()
 
 void Scene::update(const float deltaTime)
 {
-    m_t += deltaTime;
-    static bool doOnce = true;
-    if (doOnce)
-    {
-        doOnce = false;
-        if (!m_robotArmAnimations.empty()) {
-            m_robotArmSkeleton.PlayAnimation(&m_robotArmAnimations[0]);
-        }
-    }
-    // --- 2. Update the Skeleton's Pose ---
-    // This function now reads from the Animation object and updates all joint poses.
-    m_robotArmSkeleton.Update(deltaTime);
-    // --- 3. Sync Visible Nodes with Skeleton (This logic is crucial) ---
-    // This copies the final world matrix of each joint to its visible sphere.
-    for (int i = 0; i < m_robotArmSkeleton.GetBoneCount(); ++i)
-    {
-        Joint* joint = m_robotArmSkeleton.GetJoint(i);
-        DirectX::XMMATRIX finalWorldTransform = XMLoadFloat4x4(&joint -> finalTransform);
-        m_armSegmentNodes[i]->SetMatrix(finalWorldTransform);
-    }
+    m_timeElapsed += deltaTime;
+    ID3D11ShaderResourceView* textures[] = { m_pTextureDiffuse, m_pTextureMetallic, m_pTextureRoughness, m_pTextureNormal, m_pTextureDiffuseIBL, m_pTextureSpecularIBL };
 
- 
-    //SceneNode* body = m_sceneobject.GetRootNode(0);
-    //body->SetIdentity();
-    //body->AddTranslation({ 0,0,2 });
-    //SceneNode* head = body->GetChildNode(0);
-    //head->SetIdentity();
-    //head->AddTranslation({ 0,1.5,0 });
-    //head->AddScale(0.75);
-
-
-
-    // note the pixel shader and the vertex shader have been set by the renderer class calling this method
-    m_pImmediateContext->PSSetShaderResources(0, 1, &m_pTextureDiffuse);
+    m_pImmediateContext->PSSetShaderResources(0, 6, textures);
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
+  
 
 
-    ConstantBuffer cb1;
-    cb1.mView = XMMatrixTranspose(getCamera()->getViewMatrix());
-    cb1.mProjection = XMMatrixTranspose(getCamera()->getProjectionMatrix());
-    cb1.vOutputColor = XMFLOAT4(0, 0, 0, 0);
+    ConstantBuffer cb;
+    cb.mView = XMMatrixTranspose(getCamera()->getViewMatrix());
+    cb.mProjection = XMMatrixTranspose(getCamera()->getProjectionMatrix());
+    cb.vOutputColor = XMFLOAT4(0, 0, 0, 0);
+
+    CustomConstantBuffer ccb;
+    ccb.gTime = m_timeElapsed;
+
+    m_pImmediateContext->UpdateSubresource(
+        m_pCustomConstantBuffer.Get(),
+        0,
+        nullptr,
+        &ccb,
+        0,
+        0);
+
 
 
     m_lightProperties.EyePosition = XMFLOAT4(m_pCamera->getPosition().x, m_pCamera->getPosition().y, m_pCamera->getPosition().z, 1);
 
     m_pImmediateContext->UpdateSubresource(m_pLightConstantBuffer.Get(), 0, nullptr, &m_lightProperties, 0, 0);
-    ID3D11Buffer* buf = m_pLightConstantBuffer.Get();
-    m_pImmediateContext->PSSetConstantBuffers(1, 1, &buf);
+    ID3D11Buffer* bufs[] = { m_pLightConstantBuffer.Get(), m_pCustomConstantBuffer.Get() };
+    m_pImmediateContext->PSSetConstantBuffers(1, 2, bufs);
 
     // scene object 1 
     m_sceneobject.AnimateFrame(m_ctx); // this updates the transform matrix for the object - this should be called after all transforms have been made
-    
     m_sceneobject.RenderFrame(m_ctx, deltaTime); // renders the object
-
 }

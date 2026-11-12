@@ -168,6 +168,9 @@
     <ClInclude Include="Skeleton.h">
       <Filter>Animation</Filter>
     </ClInclude>
+    <ClInclude Include="ImguiUtils.h">
+      <Filter>App</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="App">
@@ -194,6 +197,9 @@
       <Filter>Animation</Filter>
     </FxCompile>
     <FxCompile Include="pbr_shader.hlsl">
+      <Filter>PBR</Filter>
+    </FxCompile>
+    <FxCompile Include="skybox.hlsl">
       <Filter>PBR</Filter>
     </FxCompile>
   </ItemGroup>

@@ -7,7 +7,7 @@
 #include "d3dcompiler.h"
 
 // TRUE - PBR Rendering / FALSE - Animation Rendering
-constexpr bool PBR_MODE = false;
+constexpr bool PBR_MODE = true;
 
 #pragma region Class lifetime
 
@@ -77,7 +77,7 @@ HRESULT DX11Renderer::init(HWND hwnd)
     ID3DBlob* pPSBlob = nullptr;
 
     if constexpr (PBR_MODE)
-        hr = DX11Renderer::compileShaderFromFile(L"pbr_shader.hlsl", "PS_Normal", "ps_4_0", &pPSBlob);
+        hr = DX11Renderer::compileShaderFromFile(L"pbr_shader.hlsl", "PS_PBR", "ps_4_0", &pPSBlob);
     else
         hr = DX11Renderer::compileShaderFromFile(L"skinned_shader.hlsl", "PS", "ps_4_0", &pPSBlob);
 
@@ -503,12 +503,12 @@ void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+    ImGui::SetNextWindowSize(ImVec2(500, -1), ImGuiCond_FirstUseEver);
 
     // YOU will want to modify this for your own debug, controls etc - comment it out to hide the window
     //ImGui::ShowMetricsWindow();
-    ImGui::SetWindowFontScale(4.0f);
-    ImGui::Text("FPS %d", FPS);
     ImGui::SetWindowFontScale(1.0f);
+    ImGui::Text("FPS %d", FPS);
     ImGui::Spacing();
 
     // example usage
