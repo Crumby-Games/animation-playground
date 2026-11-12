@@ -43,7 +43,8 @@ public:
 
 private:
 	void setupLightProperties();
-
+	Animation createWaveAnimation();
+	void generateWaveAnimationSampler(int nodeIndex, Animation* anim);
 public:
 	Camera* m_pCamera;
 	
@@ -57,8 +58,9 @@ public:
 	LightPropertiesConstantBuffer m_lightProperties;
 	IRenderingContext m_ctx;
 	SceneGraph m_sceneobject;
-	Animation m_animation;
-
+	Skeleton m_robotArmSkeleton;
+	std::vector<SceneNode*> m_armSegmentNodes;
+	std::vector<Animation> m_robotArmAnimations;
 
 private:
 	ID3D11ShaderResourceView* m_pTextureDiffuse;
