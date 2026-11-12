@@ -7,6 +7,8 @@ cbuffer ConstantBuffer : register( b0 )
 	matrix View;
 	matrix Projection;
 	float4 vOutputColor;
+    float4x4 g_boneTransforms[100]; // Must match max_bones on CPU
+    unsigned int bone_count;
 }
 
 cbuffer CustomConstantBuffer : register(b2)
@@ -172,16 +174,31 @@ float2 IntegrateBRDF(float NdotV, float roughness)
 PS_INPUT VS( VS_INPUT input )
 {
     PS_INPUT output = (PS_INPUT)0;
-    output.Pos = mul( input.Pos, World );
+    
+    float4 skinnedPos = float4(0, 0, 0, 0);
+    float3 skinnedNorm = float3(0, 0, 0);
+    float4 skinnedTangent = float4(0, 0, 0, 0);
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        float4x4 transform = g_boneTransforms[input.Joints[i]];
+        skinnedPos += mul(input.Pos, transform) * input.Weights[i];
+        skinnedNorm += mul(input.Norm, (float3x3) transform) * input.Weights[i];
+        skinnedTangent += mul(input.Tangent, transform) * input.Weights[i];
+    }
+	
+    skinnedPos.w = 1.0;
+    
+    output.Pos = mul(skinnedPos, World);
 	output.worldPos = output.Pos;
     output.Pos = mul( output.Pos, View );
     output.Pos = mul( output.Pos, Projection );
     output.Tex = input.Tex;
     
 	// multiply the normal and tangent by the world transform (to go from model space to world space)
-    output.Tangent.xyz = normalize(mul(float4(input.Tangent.xyz, 0), World).xyz);
-    output.Norm = normalize(mul(float4(input.Norm, 0), World).xyz);
-    output.Tangent.w = input.Tangent.w;
+    output.Tangent.xyz = normalize(mul(float4(skinnedTangent.xyz, 0), World).xyz);
+    output.Norm = normalize(mul(float4(skinnedNorm, 0), World).xyz);
+    output.Tangent.w = input.Tangent.w; // Why is 4th component preserved?
     
     return output;
 }

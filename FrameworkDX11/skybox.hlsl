@@ -4,6 +4,8 @@ cbuffer ConstantBuffer : register(b0)
     matrix View;
     matrix Projection;
     float4 vOutputColor;
+    float4x4 g_boneTransforms[100]; // Must match max_bones on CPU
+    unsigned int bone_count;
 }
 
 TextureCube envMap : register(t0);
