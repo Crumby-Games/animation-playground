@@ -169,16 +169,31 @@ LightingResult ComputeLighting(float4 pixelToLightVectorNormalised, float4 pixel
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
+
+
+
 PS_INPUT VS( VS_INPUT input )
 {
     PS_INPUT output = (PS_INPUT) 0;
 	
-	output.Pos = mul(input.Pos, World);
+    float4 skinnedPos = float4(0, 0, 0, 0);
+    float3 skinnedNorm = float3(0, 0, 0);
+	
+    for (int i = 0; i < 4; ++i)
+    {
+        float4x4 transform = g_boneTransforms[input.Joints[i]];
+        skinnedPos += mul(input.Pos, transform) * input.Weights[i];
+        skinnedNorm += mul(input.Norm, (float3x3) transform) * input.Weights[i];
+    }
+	
+    skinnedPos.w = 1.0;
+	
+    output.Pos = mul(skinnedPos, World);
     output.worldPos = output.Pos;
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
 
-    output.Norm = mul(input.Norm, (float3x3) World);
+    output.Norm = mul(skinnedNorm, (float3x3) World);
     output.Norm = normalize(output.Norm);
 
     output.Tex = input.Tex;

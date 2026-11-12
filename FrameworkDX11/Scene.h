@@ -43,8 +43,6 @@ public:
 
 private:
 	void setupLightProperties();
-	Animation createWaveAnimation();
-	void generateWaveAnimationSampler(int nodeIndex, Animation* anim);
 public:
 	Camera* m_pCamera;
 	

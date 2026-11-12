@@ -7,7 +7,7 @@
 #include "d3dcompiler.h"
 
 // TRUE - PBR Rendering / FALSE - Animation Rendering
-constexpr bool PBR_MODE = true;
+constexpr bool PBR_MODE = false;
 
 #pragma region Class lifetime
 

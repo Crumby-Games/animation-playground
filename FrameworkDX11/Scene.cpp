@@ -59,39 +59,11 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     m_ctx.Init(device.Get(), context.Get(), renderer);
     //bool ok = m_sceneobject.LoadGLTF(m_ctx, L"Resources\\sphere.gltf");
 
-   
-    const float boneLength = 2.0f;
-    const int numSegments = 3;
-    XMMATRIX scale = XMMatrixScaling(0.75, 0.75, 0.75);
-
-    
-
-    XMFLOAT4X4 transforms[3];
-    int jointIndices[3];
-  
-    int parentIdx = -1;
-
-    for (int i = 0; i < numSegments;i++) {
-        if (parentIdx == -1) XMStoreFloat4x4(&transforms[i], XMMatrixIdentity());
-        else XMStoreFloat4x4(&transforms[i], scale * XMMatrixTranslation(0.0f, boneLength, 0.0f));
-        parentIdx = m_robotArmSkeleton.AddJoint(parentIdx, transforms[i]);
-        jointIndices[i] = parentIdx;
-        m_sceneobject.CreateRootNode();
-
-    }
-
-    for (int i = 0;i < numSegments;i++) {
-        SceneNode* segmentNode = m_sceneobject.GetRootNode(i);
-        segmentNode->LoadSphere(m_ctx);
-        m_armSegmentNodes.push_back(segmentNode);
-    }
-    m_robotArmAnimations.push_back(createWaveAnimation());
+    m_sceneobject.LoadGLTFWithSkeleton(m_ctx, L"Resources\\fox.gltf");
 
 
-    
-    
 
-    m_pCamera = new Camera(XMFLOAT3(0, 0, -6), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
+    m_pCamera = new Camera(XMFLOAT3(0, 0, -10), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
     
 
     // Create the constant buffer
@@ -141,52 +113,6 @@ void Scene::cleanUp()
     delete m_pCamera;
 }
 
-Animation Scene::createWaveAnimation() {
-    Animation anim;
-    anim.m_name = "WaveHand_Simple";
-    generateWaveAnimationSampler(1, &anim);
-    generateWaveAnimationSampler(2, &anim);
-
-    return anim;
-}
-
-void Scene::generateWaveAnimationSampler(int nodeIndex, Animation* anim) {
-    // Samplers for the hand's translation and rotation.
-    AnimationSampler nodeTranslationSampler, nodeRotationSampler;
-    // Get the hand's structural bind pose.
-    DirectX::XMMATRIX nodeBindPose = DirectX::XMLoadFloat4x4(&m_robotArmSkeleton.GetJoint(nodeIndex)->localBindTransform);
-    // --- Keyframe 1: The Start Pose (t = 0.0s) ---
-    // The hand is in its default, non-animated state.
-    XMFLOAT3 startPos = BakeTranslationOntoBindPose(nodeBindPose, { 0.0f, 0.0f, 0.0f });
-    nodeTranslationSampler.timestamps.push_back(0.0f);
-    nodeTranslationSampler.vec3_values.push_back(startPos);
-    XMFLOAT4 startRot = BakeRotationOntoBindPose(nodeBindPose, { 0, 0, 1 }, 0.0f); // No rotation
-    nodeRotationSampler.timestamps.push_back(0.0f);
-    nodeRotationSampler.vec4_values.push_back(startRot);
-    // --- Keyframe 2: The End Pose (t = 2.0s) ---
-    // The hand is translated up and rotated 90 degrees to the side.
-    XMFLOAT3 endPos = BakeTranslationOntoBindPose(nodeBindPose, { 0.0f, 2.0f, 0.0f }); // Move up slightly
-    nodeTranslationSampler.timestamps.push_back(2.0f);
-    nodeTranslationSampler.vec3_values.push_back(endPos);
-    XMFLOAT4 endRot = BakeRotationOntoBindPose(nodeBindPose, { 0, 0, 1 }, DirectX::XM_PIDIV2); // Rotate 90 degrees
-    nodeRotationSampler.timestamps.push_back(2.0f);
-    nodeRotationSampler.vec4_values.push_back(endRot);
-    // --- Add Samplers and Channels for the node ---
-    anim->m_samplers.push_back(nodeTranslationSampler); // Sampler x
-    int nodeTranslationSamplerIndex = anim->m_samplers.size() - 1;
-    anim->m_samplers.push_back(nodeRotationSampler); // Sampler x+1
-    int nodeRotationSamplerIndex = anim->m_samplers.size() - 1;
-    AnimationChannel transChannel;
-    transChannel.path = AnimationChannel::TRANSLATION;
-    transChannel.samplerIndex = nodeTranslationSamplerIndex;
-    transChannel.jointIndex = nodeIndex;
-    anim->m_channels.push_back(transChannel);
-    AnimationChannel rotChannel;
-    rotChannel.path = AnimationChannel::ROTATION;
-    rotChannel.samplerIndex = nodeRotationSamplerIndex;
-    rotChannel.jointIndex = nodeIndex;
-    anim->m_channels.push_back(rotChannel);
-}
 
 void Scene::setupLightProperties()
 {
