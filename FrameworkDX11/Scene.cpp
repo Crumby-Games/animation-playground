@@ -113,10 +113,8 @@ void Scene::setupLightProperties()
     // set up the light
 
     //XMFLOAT4 LightPosition(m_pCamera->getPosition().x , m_pCamera->getPosition().y, m_pCamera->getPosition().z, 1);
-    XMFLOAT4 LightPosition(5 , 5, -6, 1);
-    light.Position = LightPosition;
+    light.Position = { 0, 5, 0, 1 };
     
-    m_lightProperties.EyePosition = LightPosition;
     m_lightProperties.Lights[0] = light;
 }
 
@@ -128,8 +126,6 @@ void Scene::update(const float deltaTime)
     m_pImmediateContext->PSSetShaderResources(0, 6, textures);
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
   
-
-
     ConstantBuffer cb;
     cb.mView = XMMatrixTranspose(getCamera()->getViewMatrix());
     cb.mProjection = XMMatrixTranspose(getCamera()->getProjectionMatrix());
@@ -146,10 +142,7 @@ void Scene::update(const float deltaTime)
         0,
         0);
 
-
-
     m_lightProperties.EyePosition = XMFLOAT4(m_pCamera->getPosition().x, m_pCamera->getPosition().y, m_pCamera->getPosition().z, 1);
-
     m_pImmediateContext->UpdateSubresource(m_pLightConstantBuffer.Get(), 0, nullptr, &m_lightProperties, 0, 0);
     ID3D11Buffer* bufs[] = { m_pLightConstantBuffer.Get(), m_pCustomConstantBuffer.Get() };
     m_pImmediateContext->PSSetConstantBuffers(1, 2, bufs);

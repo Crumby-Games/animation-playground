@@ -509,7 +509,12 @@ void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
     //ImGui::ShowMetricsWindow();
     ImGui::SetWindowFontScale(1.0f);
     ImGui::Text("FPS %d", FPS);
-    ImGui::Spacing();
+
+    ImGui::SliderFloat("Time Scale", &m_timeScale, 0.0f, 2.0f);
+
+    XMFLOAT4& lightPos = m_pScene->m_lightProperties.Lights[0].Position;
+    ImGui::DragFloat3("Light Position", &lightPos.x, 0.2,20,20);
+
 
     // example usage
     /*if (ImGui::RadioButton("Single threaded CPU", g_ttype == use_cpu_singlethread)) g_ttype = use_cpu_singlethread;
@@ -559,7 +564,7 @@ void DX11Renderer::update(const float deltaTime)
     m_pImmediateContext->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
 
 
-    m_pScene->update(deltaTime);
+    m_pScene->update(deltaTime * m_timeScale);
 
     
     completeIMGUIDraw();

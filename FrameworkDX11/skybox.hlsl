@@ -25,9 +25,8 @@ struct PS_INPUT
 PS_INPUT VS(VS_INPUT IN)
 {
     PS_INPUT output = (PS_INPUT) 0;
-    float4x4 viewRotation = View;
-    viewRotation._m03_m13_m23 = float3(0, 0, 0); // remove translation from matrix
-    
+    float4x4 viewRotation = (float3x3) View;
+
     float4 pos = mul(Projection * viewRotation, float4(IN.Pos.xyz, 1.0));
     output.Pos = pos.xyww; // Perform swizzling
     return output;

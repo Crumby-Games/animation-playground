@@ -178,6 +178,7 @@ PS_INPUT VS( VS_INPUT input )
 	
     float4 skinnedPos = float4(0, 0, 0, 0);
     float3 skinnedNorm = float3(0, 0, 0);
+
 	
     for (int i = 0; i < 4; ++i)
     {

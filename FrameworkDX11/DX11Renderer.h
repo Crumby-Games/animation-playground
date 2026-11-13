@@ -78,7 +78,9 @@ public: // properties
 
 
 	Scene* m_pScene;
-	
+
+private:
+	float m_timeScale = 1.0;
 
 };
 
