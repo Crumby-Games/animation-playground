@@ -243,8 +243,8 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
             DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&sampler.vec4_values[nextFrame]);
 
             // Ensure we take the shortest path for rotation
-            if (DirectX::XMVectorGetX(DirectX::XMVector4Dot(q1, q2)) < 0.0f) {
-                q2 = DirectX::XMVectorNegate(q2);
+            if (XMVectorGetX(XMVector4Dot(q1, q2)) < 0.0f) {
+                q2 = XMVectorNegate(q2);
             }
             
             rotation = DirectX::XMQuaternionSlerp(XMQuaternionIdentity(), DirectX::XMQuaternionSlerp(q1, q2, t), weight);

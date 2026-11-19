@@ -16,7 +16,7 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     HRESULT hr;
 
     m_ctx.Init(device.Get(), context.Get(), renderer);
-    m_sceneobject.LoadGLTFWithSkeleton(m_ctx, L"Resources\\fox.gltf");
+    m_sceneobject.LoadGLTFWithSkeleton(m_ctx, L"Resources\\Fox.gltf");
 
 
     m_pCamera = new Camera(XMFLOAT3(0, 0, -10), XMFLOAT3(0, 0, 1), XMFLOAT3(0.0f, 1.0f, 0.0f), width, height);
@@ -52,21 +52,27 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     if (FAILED(hr))
         return hr;
 
+
+
     // load and setup textures
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_diff.dds", nullptr, &m_pTextureDiffuse);
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fox_dif.dds", nullptr, &m_pTextureDiffuse);
     if (FAILED(hr))
         return hr;
 
 
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_metal.dds", nullptr, &m_pTextureMetallic);
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_metal.dds", nullptr, &m_pTextureMetallic);
     if (FAILED(hr))
         return hr;
 
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_rough.dds", nullptr, &m_pTextureRoughness);
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_roughness.dds", nullptr, &m_pTextureRoughness);
     if (FAILED(hr))
         return hr;
 
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\rusty_metal_04_nor.dds", nullptr, &m_pTextureNormal);
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_ao.dds", nullptr, &m_pTextureAmbientOcclusion);
+    if (FAILED(hr))
+        return hr;
+
+    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_normal.dds", nullptr, &m_pTextureNormal);
     if (FAILED(hr))
         return hr;
 
@@ -121,9 +127,9 @@ void Scene::setupLightProperties()
 void Scene::update(const float deltaTime)
 {
     m_timeElapsed += deltaTime;
-    ID3D11ShaderResourceView* textures[] = { m_pTextureDiffuse, m_pTextureMetallic, m_pTextureRoughness, m_pTextureNormal, m_pTextureDiffuseIBL, m_pTextureSpecularIBL };
+    ID3D11ShaderResourceView* textures[] = { m_pTextureDiffuse, m_pTextureMetallic, m_pTextureRoughness, m_pTextureAmbientOcclusion, m_pTextureNormal, m_pTextureDiffuseIBL, m_pTextureSpecularIBL };
 
-    m_pImmediateContext->PSSetShaderResources(0, 6, textures);
+    m_pImmediateContext->PSSetShaderResources(0, 7, textures);
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
   
     ConstantBuffer cb;

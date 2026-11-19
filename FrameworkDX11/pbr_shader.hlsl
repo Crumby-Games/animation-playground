@@ -20,13 +20,15 @@ cbuffer CustomConstantBuffer : register(b2)
 Texture2D albedoMap : register(t0);
 Texture2D metallicMap : register(t1);
 Texture2D roughnessMap : register(t2);
-Texture2D normalMap : register(t3);
-TextureCube iblDiffuseMap : register(t4);
-TextureCube iblSpecularMap : register(t5);
+Texture2D aoMap : register(t3);
+Texture2D normalMap : register(t4);
+TextureCube iblDiffuseMap : register(t5);
+TextureCube iblSpecularMap : register(t6);
 SamplerState samLinear : register(s0);
 
 static const float PI = 3.14159265f;
 static const float maxReflectionLod = 10;
+static const float textureScale = 0.1;
 
 #define MAX_LIGHTS 1
 // Light types.
@@ -219,9 +221,10 @@ float4 PS_PBR(PS_INPUT IN) : SV_TARGET
     //float roughness = 1.0;
     
     float3 albedo = albedoMap.Sample(samLinear, IN.Tex);
-    float metallic = metallicMap.Sample(samLinear, IN.Tex).r;
-    float roughness = roughnessMap.Sample(samLinear, IN.Tex).r;
-    float3 normalSample = normalMap.Sample(samLinear, IN.Tex) * 2 - 1;
+    float metallic = metallicMap.Sample(samLinear, IN.Tex / textureScale).r;
+    float roughness = roughnessMap.Sample(samLinear, IN.Tex / textureScale).r;
+    float ao = aoMap.Sample(samLinear, IN.Tex / textureScale).r;
+    float3 normalSample = normalMap.Sample(samLinear, IN.Tex / textureScale) * 2 - 1;
     
  
 // 2. Get the normal from the normal map 
@@ -267,7 +270,7 @@ float4 PS_PBR(PS_INPUT IN) : SV_TARGET
     float3 diffuse = dColor * albedo / PI;
 
 //// 7. Result
-    float3 finalPoint = (diffuse + specular) * NdotL;
+    float3 finalPoint = (diffuse + specular * ao) * NdotL;
     
     // Part B: Environment
     float3 finalIBL = float3(0, 0, 0);
@@ -289,7 +292,7 @@ float4 PS_PBR(PS_INPUT IN) : SV_TARGET
             float3 specularLightHem = lerp(groundCol, skyCol, weightR);
             float3 diffuseHem = dColor * albedo * diffuseLightHem;
             float3 specularHem = F * specularLightHem;
-            finalIBL = diffuseHem + specularHem;
+            finalIBL = diffuseHem + specularHem * ao;
             
             break;
     
@@ -303,7 +306,7 @@ float4 PS_PBR(PS_INPUT IN) : SV_TARGET
         
             float2 brdf = IntegrateBRDF(dot(N, V), roughness);
             float3 specularIBL = prefilteredColour * (F * brdf.x + brdf.y);
-            finalIBL = diffuseIBL + specularIBL;
+            finalIBL = diffuseIBL + specularIBL * ao;
             
             break;
     }
