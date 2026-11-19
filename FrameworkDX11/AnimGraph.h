@@ -1,8 +1,5 @@
 #pragma once
 
-#include <memory>
-#include <iostream>
-
 class AnimNode
 {
 public:
@@ -51,8 +48,12 @@ struct BlendNode : public AnimNode {
 	}
 
 	void Update(float delta) override {
-		if (!fixed)
+		if (!fixed) {
 			weight += delta * time_factor;
+			if (weight > 1) weight = 1.0f;
+		}
+			
+		
 		from->Update(delta);
 		to->Update(delta);
 	}

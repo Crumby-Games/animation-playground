@@ -168,8 +168,8 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
     }
 
     if (m_animationCount > 0) {
-        m_animGraph.PlayAnimation(0);
-        m_animGraph.PlayAnimation(2, 5);
+        m_animGraph.PlayAnimation(2);
+        m_animGraph.PlayAnimation(1, 5);
     }
 
         //m_animGraph.PlayMixedAnimation(0,2,0.5);
@@ -193,7 +193,8 @@ void Skeleton::Update(float deltaTime)
 
     for (size_t i = 0; i < m_joints.size(); ++i) {
         XMMATRIX inv = XMLoadFloat4x4(&m_joints[i].inverseBindMatrix);
-        XMMATRIX finalTransform = XMLoadFloat4x4(&m_joints[i].finalTransform);
+        
+        XMMATRIX finalTransform = XMLoadFloat4x4(&m_joints[i].animatedTransform) * XMLoadFloat4x4(&m_joints[i].localBindTransform);
         XMMATRIX out = inv * finalTransform;
         XMStoreFloat4x4(&m_skinningMatrices[i], out);
     }
@@ -280,14 +281,14 @@ void Skeleton::UpdateJointTransform(int jointIndex, const Animation* anim, float
 {
     Joint& currentJoint = m_joints[jointIndex];
 
+    DirectX::XMMATRIX previousAnimatedMatrix = XMLoadFloat4x4(&currentJoint.animatedTransform);
+    DirectX::XMMATRIX newAnimatedMatrix = GetLocalAnimatedMatrixForJoint(currentJoint, jointIndex, anim, time, weight) * previousAnimatedMatrix;
+    DirectX::XMMATRIX finalTransform = newAnimatedMatrix * parentTransform;
 
-    DirectX::XMMATRIX localAnimatedMatrix = GetLocalAnimatedMatrixForJoint(currentJoint, jointIndex, anim, time, weight);
-    DirectX::XMMATRIX finalTransform = localAnimatedMatrix * parentTransform;
-
-    XMStoreFloat4x4(&currentJoint.finalTransform, finalTransform);
+    XMStoreFloat4x4(&currentJoint.animatedTransform, newAnimatedMatrix);
 
     for (int childIndex : currentJoint.children) {
-        UpdateJointTransform(childIndex, anim, time, XMLoadFloat4x4(&currentJoint.finalTransform), weight);
+        UpdateJointTransform(childIndex, anim, time, finalTransform, weight);
     }
 }
 

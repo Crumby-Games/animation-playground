@@ -21,9 +21,11 @@ struct Joint
     // Indices of the children of this joint in the skeleton's main joint list.
     std::vector<int> children;
 
+    DirectX::XMFLOAT4X4 animatedTransform{};
+
     // The final transform of the bone in model space for the current animation frame.
     // This is calculated at runtime by combining the local animated pose with the parent's final transform.
-    DirectX::XMFLOAT4X4 finalTransform{};
+
 };
 
 class Skeleton
