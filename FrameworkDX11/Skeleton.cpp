@@ -6,24 +6,25 @@
 using namespace DirectX;
 
 
-Skeleton::Skeleton() : m_currentAnimationTime(0), m_pCurrentAnimation(nullptr), m_animationCount(0)
+Skeleton::Skeleton() : m_animationCount(0)
 {
     XMStoreFloat4x4(&m_rootTransform, XMMatrixIdentity());
 }
 
-void Skeleton::PlayAnimation(const unsigned int animation)
-{
-    if (animation >= GetAnimationCount())
-        return;
-
-    m_pCurrentAnimation = &m_animations[animation];
-    m_currentAnimationTime = m_pCurrentAnimation->GetStartTime();
-}
-
-void Skeleton::PlayAnimation(Animation* anim)
-{
-    m_pCurrentAnimation = anim;
-    m_currentAnimationTime = anim->GetStartTime();
+void Skeleton::ApplyAnimNode(std::shared_ptr<AnimNode> node, float weight) {
+    if (node->IsBranch()) {
+        std::shared_ptr<BlendNode> blend = std::static_pointer_cast<BlendNode>(node);
+        ApplyAnimNode(blend->from, weight * (1 - blend->weight));
+        ApplyAnimNode(blend->to, weight * blend->weight);
+    }
+    else {
+        std::shared_ptr<AnimInstance> node = std::static_pointer_cast<AnimInstance>(node);
+        Animation& anim = m_animations[node->anim_idx];
+        float animation_time = std::fmod(m_lifetime, anim.GetEndTime()) + anim.GetStartTime();
+        for (int rootIndex : m_rootJointIndices) {
+            UpdateJointTransform(rootIndex, &anim, animation_time, DirectX::XMMatrixIdentity(), weight);
+        }
+    }
 }
 
 int Skeleton::AddJoint(int parentIndex, const DirectX::XMFLOAT4X4& localBindTransform)
@@ -169,22 +170,18 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
 
 void Skeleton::Update(float deltaTime)
 {
+    m_lifetime += deltaTime;
     // Load the root transform we found during loading.
     DirectX::XMMATRIX rootTransform = DirectX::XMLoadFloat4x4(&m_rootTransform);
 
-    if (m_pCurrentAnimation)
-    {
-        m_currentAnimationTime += deltaTime;
-
-        if (m_currentAnimationTime >= m_pCurrentAnimation->GetEndTime())
-            m_currentAnimationTime = m_pCurrentAnimation->GetStartTime();
+    if (m_animGraph)
+        ApplyAnimNode(m_animGraph->root);
+    else {
+        for (int rootIndex : m_rootJointIndices) {
+            
+        }
     }
 
-    //m_currentAnimationTime = 0.5f; // useful for testing
-
-    for (int rootIndex : m_rootJointIndices) {
-        UpdateJointTransform(rootIndex, m_pCurrentAnimation, m_currentAnimationTime, DirectX::XMMatrixIdentity());
-    }
     for (size_t i = 0; i < m_joints.size(); ++i) {
         XMMATRIX inv = XMLoadFloat4x4(&m_joints[i].inverseBindMatrix);
         XMMATRIX finalTransform = XMLoadFloat4x4(&m_joints[i].finalTransform);
@@ -197,7 +194,9 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
     const Joint& joint,
     int jointIndex,
     const Animation* animation, // Use a pointer to allow for nullptr
-    float timeInSeconds)
+    float timeInSeconds,
+    float weight
+)
 {
     // If there is no animation, return the joint's default local transform.
     if (!animation)
@@ -239,7 +238,7 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
         if (channel.path == AnimationChannel::TRANSLATION) {
             DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&sampler.vec3_values[prevFrame]);
             DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&sampler.vec3_values[nextFrame]);
-            translation = DirectX::XMVectorLerp(v1, v2, t);
+            translation = DirectX::XMVectorLerp(v1, v2, t) * weight;
         }
         else if (channel.path == AnimationChannel::ROTATION) {
             DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&sampler.vec4_values[prevFrame]);
@@ -249,12 +248,14 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
             if (DirectX::XMVectorGetX(DirectX::XMVector4Dot(q1, q2)) < 0.0f) {
                 q2 = DirectX::XMVectorNegate(q2);
             }
-            rotation = DirectX::XMQuaternionSlerp(q1, q2, t);
+            
+            rotation = DirectX::XMQuaternionSlerp(XMQuaternionIdentity(), DirectX::XMQuaternionSlerp(q1, q2, t), weight);
         }
         else if (channel.path == AnimationChannel::SCALE) {
             DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&sampler.vec3_values[prevFrame]);
             DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&sampler.vec3_values[nextFrame]);
             scale = DirectX::XMVectorLerp(v1, v2, t);
+            scale = DirectX::XMVectorLerp(XMVectorSplatOne(), DirectX::XMVectorLerp(v1, v2, t), weight);
         }
     }
 
@@ -266,18 +267,18 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
 
 
 
-void Skeleton::UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform)
+void Skeleton::UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform, float weight)
 {
     Joint& currentJoint = m_joints[jointIndex];
 
 
-    DirectX::XMMATRIX localAnimatedMatrix = GetLocalAnimatedMatrixForJoint(currentJoint, jointIndex, anim, time);
+    DirectX::XMMATRIX localAnimatedMatrix = GetLocalAnimatedMatrixForJoint(currentJoint, jointIndex, anim, time, weight);
     DirectX::XMMATRIX finalTransform = localAnimatedMatrix * parentTransform;
 
     XMStoreFloat4x4(&currentJoint.finalTransform, finalTransform);
 
     for (int childIndex : currentJoint.children) {
-        UpdateJointTransform(childIndex, anim, time, XMLoadFloat4x4(&currentJoint.finalTransform));
+        UpdateJointTransform(childIndex, anim, time, XMLoadFloat4x4(&currentJoint.finalTransform), weight);
     }
 }
 

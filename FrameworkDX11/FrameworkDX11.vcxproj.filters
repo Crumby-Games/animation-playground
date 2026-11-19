@@ -70,6 +70,9 @@
     <ClCompile Include="Skeleton.cpp">
       <Filter>Animation</Filter>
     </ClCompile>
+    <ClCompile Include="AnimGraph.cpp">
+      <Filter>Animation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imgui_impl_win32.h">
@@ -170,6 +173,9 @@
     </ClInclude>
     <ClInclude Include="ImguiUtils.h">
       <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimGraph.h">
+      <Filter>Animation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

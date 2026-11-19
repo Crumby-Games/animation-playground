@@ -657,8 +657,6 @@ void SceneGraph::RenderNode(IRenderingContext &ctx,
     ConstantBuffer* data = &ctx.getDXRenderer()->m_ConstantBufferData;
     if (node.m_skeleton.IsLoaded())
     {
-        if (node.m_skeleton.CurrentAnimation() == nullptr)
-            node.m_skeleton.PlayAnimation((unsigned int)0);
         node.m_skeleton.Update(deltaTime);
         data->bone_count = node.m_skeleton.GetBoneCount();
         node.m_skeleton.GetSkinningMatrices(data->boneTransforms, max_bones);

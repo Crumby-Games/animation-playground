@@ -4,7 +4,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "tiny_gltf.h"
-
+#include "AnimGraph.h"
 #include "Animation.h"
 
 struct Joint
@@ -45,19 +45,21 @@ public:
     const DirectX::XMMATRIX& GetRootTransform() const { return XMLoadFloat4x4(&m_rootTransform); }
 
     unsigned int GetAnimationCount() { return m_animationCount; }
-    void PlayAnimation(const unsigned int animation);
-    void PlayAnimation(Animation* anim);
     bool IsLoaded() { return m_isLoaded; }
-    Animation* CurrentAnimation() { return m_pCurrentAnimation; }
 
     int AddJoint(int parentIndex, const DirectX::XMFLOAT4X4& localBindTransform);
     Joint* GetJoint(unsigned int joint) {
         return &m_joints[joint];
     }
 
+    void SetAnimGraph(AnimGraph& graph) { m_animGraph = &graph; }
+
 private:
     // Change the signature to accept a pointer.
-    void UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform);
+    void UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform, float weight);
+
+    void ApplyAnimNode(std::shared_ptr<AnimNode> node, float weight = 1);
+
 
     // The flat list of all joints that make up this skeleton.
     std::vector<Joint> m_joints;
@@ -70,11 +72,11 @@ private:
     std::vector<DirectX::XMFLOAT4X4> m_skinningMatrices;
 
     DirectX::XMFLOAT4X4 m_rootTransform;
-
+   
+    AnimGraph*              m_animGraph = nullptr;
     unsigned int            m_animationCount;
     std::vector<Animation>  m_animations;
-    Animation* m_pCurrentAnimation;
-    float                   m_currentAnimationTime;
+    float                   m_lifetime;
     bool                    m_isLoaded = false;
 };
 

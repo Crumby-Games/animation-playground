@@ -56,3 +56,4 @@ public:
     std::vector<AnimationChannel> m_channels;
     std::string m_name;
 };
+
