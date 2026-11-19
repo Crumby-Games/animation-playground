@@ -52,13 +52,13 @@ public:
         return &m_joints[joint];
     }
 
-    void SetAnimGraph(AnimGraph& graph) { m_animGraph = &graph; }
+    void PlayAnimation(int index, float transitionTime = 0);
 
 private:
     // Change the signature to accept a pointer.
     void UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform, float weight);
 
-    void ApplyAnimNode(std::shared_ptr<AnimNode> node, float weight = 1);
+    void ApplyAnimNode(AnimNode* node, float weight = 1);
 
 
     // The flat list of all joints that make up this skeleton.
@@ -73,10 +73,10 @@ private:
 
     DirectX::XMFLOAT4X4 m_rootTransform;
    
-    AnimGraph*              m_animGraph = nullptr;
+    AnimGraph               m_animGraph;
     unsigned int            m_animationCount;
     std::vector<Animation>  m_animations;
-    float                   m_lifetime;
+    float                   m_lifetime = 0.0f;
     bool                    m_isLoaded = false;
 };
 

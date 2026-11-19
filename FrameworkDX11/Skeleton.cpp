@@ -11,16 +11,21 @@ Skeleton::Skeleton() : m_animationCount(0)
     XMStoreFloat4x4(&m_rootTransform, XMMatrixIdentity());
 }
 
-void Skeleton::ApplyAnimNode(std::shared_ptr<AnimNode> node, float weight) {
+
+static float test = 0;
+
+void Skeleton::ApplyAnimNode(AnimNode* node, float weight) {
     if (node->IsBranch()) {
-        std::shared_ptr<BlendNode> blend = std::static_pointer_cast<BlendNode>(node);
+        BlendNode* blend = static_cast<BlendNode*>(node);
         ApplyAnimNode(blend->from, weight * (1 - blend->weight));
         ApplyAnimNode(blend->to, weight * blend->weight);
     }
     else {
-        std::shared_ptr<AnimInstance> node = std::static_pointer_cast<AnimInstance>(node);
-        Animation& anim = m_animations[node->anim_idx];
-        float animation_time = std::fmod(m_lifetime, anim.GetEndTime()) + anim.GetStartTime();
+        AnimInstance* instance = static_cast<AnimInstance*>(node);
+        Animation& anim = m_animations[instance->anim_idx];
+        test += 0.04;
+        float animation_time = test;
+        //while (m_lifetime > anim.GetEndTime()) animation_time -= anim.GetEndTime();
         for (int rootIndex : m_rootJointIndices) {
             UpdateJointTransform(rootIndex, &anim, animation_time, DirectX::XMMatrixIdentity(), weight);
         }
@@ -164,6 +169,9 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
         m_animations.push_back(a);
     }
 
+    if (m_animationCount > 0)
+        PlayAnimation(1);
+
     m_isLoaded = true;
     return true;
 }
@@ -171,16 +179,15 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
 void Skeleton::Update(float deltaTime)
 {
     m_lifetime += deltaTime;
+
     // Load the root transform we found during loading.
     DirectX::XMMATRIX rootTransform = DirectX::XMLoadFloat4x4(&m_rootTransform);
 
-    if (m_animGraph)
-        ApplyAnimNode(m_animGraph->root);
-    else {
-        for (int rootIndex : m_rootJointIndices) {
-            
-        }
+    if (m_animGraph.root != nullptr) {
+        m_animGraph.root->Update(deltaTime);
+        ApplyAnimNode(m_animGraph.root);
     }
+ 
 
     for (size_t i = 0; i < m_joints.size(); ++i) {
         XMMATRIX inv = XMLoadFloat4x4(&m_joints[i].inverseBindMatrix);
@@ -280,5 +287,9 @@ void Skeleton::UpdateJointTransform(int jointIndex, const Animation* anim, float
     for (int childIndex : currentJoint.children) {
         UpdateJointTransform(childIndex, anim, time, XMLoadFloat4x4(&currentJoint.finalTransform), weight);
     }
+}
+
+void Skeleton::PlayAnimation(int index, float transitionTime) {
+    m_animGraph.PlayAnimation(index, transitionTime);
 }
 

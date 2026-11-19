@@ -3,25 +3,28 @@
 #include <memory>
 #include <iostream>
 
-struct AnimNode
+class AnimNode
 {
-	virtual bool IsBranch() { std::cout << "Hold up anim node referenced?"; return false; };
+public:
+	virtual bool IsBranch() = 0;
 	virtual void Update(float delta) {};
 	
 	virtual ~AnimNode() = default;
-
+protected:
+	AnimNode() {};
 };
 
 struct AnimInstance : public AnimNode
 {
 	unsigned int anim_idx;
-	AnimInstance(const unsigned int animation) : anim_idx(animation){
+	bool IsBranch() override { return false; };
+	AnimInstance(const unsigned int animation) : anim_idx(animation) {
 	};
 };
 
 struct BlendNode : public AnimNode {
-	std::shared_ptr<AnimNode> from = nullptr;
-	std::shared_ptr<AnimNode> to = nullptr;
+	AnimNode* from = nullptr;
+	AnimNode* to = nullptr;
 	float weight = 0;
 	bool paused;
 	float time_factor = 1;
@@ -30,24 +33,29 @@ struct BlendNode : public AnimNode {
 		return true;
 	};
 
-	BlendNode(AnimNode* from, AnimNode* to, float duration = -1) : from(from), to(to) {
-		paused = duration > 0;
-		if (duration > 0)
-			time_factor = 1 / duration;
+	BlendNode(AnimNode* fromNode, AnimNode* toNode, float duration = -1) {
+		from = fromNode;
+		to = toNode;
+		paused = false;
+		//if (duration > 0) {
+		//	time_factor = 1 / duration;
+		//}
+
+	}
+
+	~BlendNode() override {
+		if (from)
+			delete from;
+		if (to)
+			delete to;
 	}
 
 	void Update(float delta) override {
 		if (paused)
 			return;
-		//weight ;
+		weight += delta * time_factor;
 		from->Update(delta);
-
-		//if (from->IsBranch()) {
-		//	if (std::static_pointer_cast<BlendNode>(from)->weight)
-		//}
-
 		to->Update(delta);
-		
 	}
 
 };
@@ -55,10 +63,14 @@ struct BlendNode : public AnimNode {
 class AnimGraph
 {
 public:
-	BlendNode* PlayMixedAnimation(const unsigned int anim1, const unsigned int anim2, float weight = 0.5, float transition_time = 0);
-	AnimInstance* PlayAnimation(const unsigned int animation, float transition_time = 0);
-	void Update(float delta) { root->Update(delta); };
-	std::shared_ptr<AnimNode> root = nullptr;
+	void PlayMixedAnimation(const unsigned int anim1, const unsigned int anim2, float weight = 0.5, float transition_time = 0);
+	void PlayAnimation(const unsigned int animation, float transition_time = 0);
+	void Update(float delta) { if (root) root->Update(delta); };
+	//~AnimGraph() {
+	//	if (root)
+	//		delete root;
+	//}
+	AnimNode* root = nullptr;
 private:
 	void TransitionTo(AnimNode* node, float transition);
 

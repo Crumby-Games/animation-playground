@@ -514,6 +514,7 @@ bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
         printAnimations(model);
 
         sceneNode.m_skeleton.LoadFromGltf(model);
+
         sceneNode.m_skeleton.Update(0);
         
         if (!LoadSceneNodeFromGLTF(ctx, sceneNode, model, nodeIdx, logPrefix + L"   "))
@@ -657,7 +658,7 @@ void SceneGraph::RenderNode(IRenderingContext &ctx,
     ConstantBuffer* data = &ctx.getDXRenderer()->m_ConstantBufferData;
     if (node.m_skeleton.IsLoaded())
     {
-        node.m_skeleton.Update(deltaTime);
+        
         data->bone_count = node.m_skeleton.GetBoneCount();
         node.m_skeleton.GetSkinningMatrices(data->boneTransforms, max_bones);
     }
@@ -2152,6 +2153,9 @@ void SceneNode::Animate(IRenderingContext &ctx)
     //}
     //else
    //     mWorldMtrx = mLocalMtrx;
+
+    if (m_skeleton.IsLoaded())
+        
 
     mWorldMtrx = mLocalMtrx;
 
