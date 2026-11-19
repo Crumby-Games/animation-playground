@@ -5,6 +5,7 @@
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
 #include "d3dcompiler.h"
+#include "AnimGraph.h"
 
 // TRUE - PBR Rendering / FALSE - Animation Rendering
 constexpr bool PBR_MODE = true;
@@ -515,6 +516,12 @@ void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
     XMFLOAT4& lightPos = m_pScene->m_lightProperties.Lights[0].Position;
     ImGui::DragFloat3("Light Position", &lightPos.x, 0.2,20,20);
 
+    AnimNode* rootAnimNode = m_pScene->m_sceneobject.GetRootNode(0)->GetSkeleton()->GetAnimGraph().root.get();
+    if (rootAnimNode->IsBranch()) {
+        BlendNode* rootBlendNode = static_cast<BlendNode*>(rootAnimNode);
+        ImGui::SliderFloat("Blend Weight", &rootBlendNode->weight, 0, 1);
+    }
+    
 
     // example usage
     /*if (ImGui::RadioButton("Single threaded CPU", g_ttype == use_cpu_singlethread)) g_ttype = use_cpu_singlethread;

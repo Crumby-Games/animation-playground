@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 class AnimNode
 {
 public:
@@ -20,8 +22,8 @@ struct AnimInstance : public AnimNode
 };
 
 struct BlendNode : public AnimNode {
-	AnimNode* from = nullptr;
-	AnimNode* to = nullptr;
+	std::shared_ptr<AnimNode> from;
+	std::shared_ptr<AnimNode> to;
 	float weight = 0;
 	bool fixed = true;
 	float time_factor = 1;
@@ -30,21 +32,12 @@ struct BlendNode : public AnimNode {
 		return true;
 	};
 
-	BlendNode(AnimNode* fromNode, AnimNode* toNode, float transition = -1) {
-		from = fromNode;
-		to = toNode;
+	BlendNode(AnimNode* fromNode, AnimNode* toNode, float transition = -1) : from(fromNode), to(toNode) {
 		if (transition > 0) {
 			fixed = false;
 			time_factor = 1 / transition;
 		}
 
-	}
-
-	~BlendNode() override {
-		if (from)
-			delete from;
-		if (to)
-			delete to;
 	}
 
 	void Update(float delta) override {
@@ -65,12 +58,9 @@ class AnimGraph
 public:
 	void PlayMixedAnimation(const unsigned int anim1, const unsigned int anim2, float weight = 0.5, float transition_time = 0);
 	void PlayAnimation(const unsigned int animation, float transition_time = 0);
-	void Update(float delta) { if (root) root->Update(delta); };
-	//~AnimGraph() {
-	//	if (root)
-	//		delete root;
-	//}
-	AnimNode* root = nullptr;
+	void Update(float delta) { if (root.get()) root->Update(delta); };
+	AnimGraph() {};
+	std::shared_ptr<AnimNode> root = nullptr;
 private:
 	void TransitionTo(AnimNode* node, float transition);
 

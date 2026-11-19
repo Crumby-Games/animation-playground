@@ -14,13 +14,10 @@ void AnimGraph::PlayMixedAnimation(const unsigned int anim1, const unsigned int 
 
 void AnimGraph::TransitionTo(AnimNode* node, float transition) {
 
-	if (transition <= 0 || root == nullptr) {
-		if (root != nullptr)
-			delete root;
-		root = node;
+	if (transition <= 0 || root.get()) {
+		root.reset(node);
 	}
 	else {
-		BlendNode* blend = new BlendNode(root, node, transition);
-		root = new BlendNode(root, node, transition);
+		root.reset(new BlendNode(root.get(), node, transition));
 	}
 }

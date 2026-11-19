@@ -23,6 +23,8 @@ struct Joint
 
     DirectX::XMFLOAT4X4 animatedTransform{};
 
+    DirectX::XMFLOAT4X4 finalTransform{};
+
     // The final transform of the bone in model space for the current animation frame.
     // This is calculated at runtime by combining the local animated pose with the parent's final transform.
 
@@ -46,6 +48,7 @@ public:
     const unsigned int GetBoneCount() { return m_skinningMatrices.size(); }
     const DirectX::XMMATRIX& GetRootTransform() const { return XMLoadFloat4x4(&m_rootTransform); }
 
+    AnimGraph& GetAnimGraph() { return m_animGraph; }
     unsigned int GetAnimationCount() { return m_animationCount; }
     bool IsLoaded() { return m_isLoaded; }
 
@@ -58,7 +61,7 @@ public:
 
 private:
     // Change the signature to accept a pointer.
-    void UpdateJointTransform(int jointIndex, const Animation* anim, float time, const DirectX::XMMATRIX& parentTransform, float weight);
+    void UpdateJointGlobalTransform(int jointIndex, const DirectX::XMMATRIX& parentTransform);
 
     void ApplyAnimNode(AnimNode* node, float weight = 1);
 
