@@ -26,20 +26,20 @@ struct BlendNode : public AnimNode {
 	AnimNode* from = nullptr;
 	AnimNode* to = nullptr;
 	float weight = 0;
-	bool paused;
+	bool fixed = true;
 	float time_factor = 1;
 
 	bool IsBranch() override {
 		return true;
 	};
 
-	BlendNode(AnimNode* fromNode, AnimNode* toNode, float duration = -1) {
+	BlendNode(AnimNode* fromNode, AnimNode* toNode, float transition = -1) {
 		from = fromNode;
 		to = toNode;
-		paused = false;
-		//if (duration > 0) {
-		//	time_factor = 1 / duration;
-		//}
+		if (transition > 0) {
+			fixed = false;
+			time_factor = 1 / transition;
+		}
 
 	}
 
@@ -51,9 +51,8 @@ struct BlendNode : public AnimNode {
 	}
 
 	void Update(float delta) override {
-		if (paused)
-			return;
-		weight += delta * time_factor;
+		if (!fixed)
+			weight += delta * time_factor;
 		from->Update(delta);
 		to->Update(delta);
 	}

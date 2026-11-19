@@ -656,9 +656,10 @@ void SceneGraph::RenderNode(IRenderingContext &ctx,
 
     XMMATRIX world = matWorld * parentWorldMtrx;
     ConstantBuffer* data = &ctx.getDXRenderer()->m_ConstantBufferData;
+ //   std::cerr << "Testing console output";
     if (node.m_skeleton.IsLoaded())
     {
-        
+        node.m_skeleton.Update(deltaTime);
         data->bone_count = node.m_skeleton.GetBoneCount();
         node.m_skeleton.GetSkinningMatrices(data->boneTransforms, max_bones);
     }

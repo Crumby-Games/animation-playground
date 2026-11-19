@@ -12,7 +12,6 @@ Skeleton::Skeleton() : m_animationCount(0)
 }
 
 
-static float test = 0;
 
 void Skeleton::ApplyAnimNode(AnimNode* node, float weight) {
     if (node->IsBranch()) {
@@ -23,9 +22,8 @@ void Skeleton::ApplyAnimNode(AnimNode* node, float weight) {
     else {
         AnimInstance* instance = static_cast<AnimInstance*>(node);
         Animation& anim = m_animations[instance->anim_idx];
-        test += 0.04;
-        float animation_time = test;
-        //while (m_lifetime > anim.GetEndTime()) animation_time -= anim.GetEndTime();
+
+        float animation_time = std::fmod(m_lifetime,anim.GetEndTime() - anim.GetStartTime()) + anim.GetStartTime();
         for (int rootIndex : m_rootJointIndices) {
             UpdateJointTransform(rootIndex, &anim, animation_time, DirectX::XMMatrixIdentity(), weight);
         }
@@ -169,8 +167,12 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
         m_animations.push_back(a);
     }
 
-    if (m_animationCount > 0)
-        PlayAnimation(1);
+    if (m_animationCount > 0) {
+        m_animGraph.PlayAnimation(0);
+        m_animGraph.PlayAnimation(2, 5);
+    }
+
+        //m_animGraph.PlayMixedAnimation(0,2,0.5);
 
     m_isLoaded = true;
     return true;

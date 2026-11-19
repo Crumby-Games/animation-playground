@@ -149,7 +149,5 @@ void Scene::update(const float deltaTime)
 
     // scene object 1 
     m_sceneobject.AnimateFrame(m_ctx); // this updates the transform matrix for the object - this should be called after all transforms have been made
-    std::cout << "TESTING WHY NOT WORK";
-    
     m_sceneobject.RenderFrame(m_ctx, deltaTime); // renders the object
 }
