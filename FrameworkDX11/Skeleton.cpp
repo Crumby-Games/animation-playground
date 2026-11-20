@@ -167,13 +167,13 @@ void Skeleton::Update(float deltaTime)
     // Load the root transform we found during loading.
     DirectX::XMMATRIX rootTransform = DirectX::XMLoadFloat4x4(&m_rootTransform);
 
-    for (Joint& joint : m_joints)
-        //joint.animatedTransform = joint.localBindTransform;
-        XMStoreFloat4x4(&joint.animatedTransform, XMMatrixIdentity());
 
     if (m_animGraph.root != nullptr) {
         m_animGraph.root->Update(deltaTime);
-        ApplyAnimNode(m_animGraph.root.get());
+        for (auto& pair : ApplyAnimNode(m_animGraph.root.get())) {
+            Joint& joint = m_joints[pair.first];
+            XMStoreFloat4x4(&joint.finalTransform, pair.second.Matrix());
+        }
     }
 
     UpdateJointGlobalTransform(0, XMMatrixIdentity());
@@ -188,25 +188,29 @@ void Skeleton::Update(float deltaTime)
     }
 }
 
-DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
-    const Joint& joint,
+ComponentTransform Skeleton::GetLocalAnimatedTransformForJoint(
     int jointIndex,
     const Animation* animation, // Use a pointer to allow for nullptr
-    float timeInSeconds,
-    float weight
+    float timeInSeconds
 )
 {
+    const Joint& joint = m_joints[jointIndex];
     // If there is no animation, return the joint's default local transform.
-    if (!animation)
-    {
-        // Assumes localBindTransform is now an XMFLOAT4X4
-        return DirectX::XMLoadFloat4x4(&joint.localBindTransform);
-    }
+    ComponentTransform out;
 
     // Decompose the joint's local bind transform into its default TRS.
     // These will be our starting values, which we'll overwrite if a channel animates them.
     DirectX::XMVECTOR scale, rotation, translation;
     DirectX::XMMatrixDecompose(&scale, &rotation, &translation, DirectX::XMLoadFloat4x4(&joint.localBindTransform));
+
+    if (!animation)
+    {
+        XMStoreFloat3(&out.scale, scale);
+        XMStoreFloat4(&out.rotation, rotation);
+        XMStoreFloat3(&out.translation, translation);
+        // Assumes localBindTransform is now an XMFLOAT4X4
+        return out;
+    }
 
     // Iterate through all animation channels to find ones that affect this joint
     for (const auto& channel : animation->m_channels)
@@ -236,7 +240,7 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
         if (channel.path == AnimationChannel::TRANSLATION) {
             DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&sampler.vec3_values[prevFrame]);
             DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&sampler.vec3_values[nextFrame]);
-            translation = DirectX::XMVectorLerp(v1, v2, t) * weight;
+            translation = DirectX::XMVectorLerp(v1, v2, t);
         }
         else if (channel.path == AnimationChannel::ROTATION) {
             DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&sampler.vec4_values[prevFrame]);
@@ -247,42 +251,59 @@ DirectX::XMMATRIX GetLocalAnimatedMatrixForJoint(
                 q2 = XMVectorNegate(q2);
             }
             
-            rotation = DirectX::XMQuaternionSlerp(XMQuaternionIdentity(), DirectX::XMQuaternionSlerp(q1, q2, t), weight);
-            if (XMVectorGetX(rotation) < 0.0f) {
-                rotation = XMVectorNegate(rotation);
-            }
+            rotation = DirectX::XMQuaternionSlerp(q1, q2, t);
         }
         else if (channel.path == AnimationChannel::SCALE) {
             DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&sampler.vec3_values[prevFrame]);
             DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&sampler.vec3_values[nextFrame]);
             scale = DirectX::XMVectorLerp(v1, v2, t);
-            scale = DirectX::XMVectorLerp(scale, DirectX::XMVectorLerp(v1, v2, t), weight);
         }
     }
 
+    XMStoreFloat3(&out.scale, scale);
+    XMStoreFloat4(&out.rotation, rotation);
+    XMStoreFloat3(&out.translation, translation);
+
     // Re-compose the final local matrix from the (potentially animated) TRS values
-    return DirectX::XMMatrixScalingFromVector(scale) *
-        DirectX::XMMatrixRotationQuaternion(rotation) *
-        DirectX::XMMatrixTranslationFromVector(translation);
+    return out;
 }
 
-void Skeleton::ApplyAnimNode(AnimNode* node, float weight) {
+std::map<int, ComponentTransform> Skeleton::ApplyAnimNode(AnimNode* node) {
     if (node->IsBranch()) {
         BlendNode* blend = static_cast<BlendNode*>(node);
-        ApplyAnimNode(blend->from.get(), weight * (1 - blend->weight));
-        ApplyAnimNode(blend->to.get(), weight * blend->weight);
+        std::map<int, ComponentTransform> out = {};
+
+        auto transform1 = ApplyAnimNode(blend->from.get());
+        auto transform2 = ApplyAnimNode(blend->to.get());
+        for (auto& pair : transform1) {
+            Joint& joint = m_joints[pair.first];
+            XMVECTOR scale = XMVectorLerp(transform1[pair.first].Scale(), transform2[pair.first].Scale(), blend->weight);
+
+            XMVECTOR q1 = transform1[pair.first].Rotation();
+            XMVECTOR q2 = transform2[pair.first].Rotation();
+
+            if (XMVectorGetX(XMVector4Dot(q1, q2)) < 0.0f) {
+                q2 = XMVectorNegate(q2);
+            }
+            XMVECTOR rotation = XMQuaternionSlerp(q1, q2, blend->weight);
+            XMVECTOR translation = XMVectorLerp(transform1[pair.first].Translation(), transform2[pair.first].Translation(), blend->weight);
+            out[pair.first] = {};
+            XMStoreFloat3(&out[pair.first].scale, scale);
+            XMStoreFloat4(&out[pair.first].rotation, rotation);
+            XMStoreFloat3(&out[pair.first].translation, translation);
+        }
+        return out;
     }
     else {
         AnimInstance* instance = static_cast<AnimInstance*>(node);
         Animation& anim = m_animations[instance->anim_idx];
         float animation_time = std::fmod(m_lifetime, anim.GetEndTime() - anim.GetStartTime()) + anim.GetStartTime();
+        std::map<int, ComponentTransform> out = {};
 
         for (int jointIndex = 0; jointIndex < m_joints.size(); ++jointIndex) {
-            Joint& joint = m_joints[jointIndex];
-            DirectX::XMMATRIX animatedTransform = GetLocalAnimatedMatrixForJoint(joint, jointIndex, &anim, animation_time, weight) * XMLoadFloat4x4(&joint.animatedTransform);
-            XMStoreFloat4x4(&joint.animatedTransform, animatedTransform);
+            out[jointIndex] = GetLocalAnimatedTransformForJoint(jointIndex, &anim, animation_time);
         }
-
+        return out;
     }
 }
 
@@ -291,7 +312,7 @@ void Skeleton::UpdateJointGlobalTransform(int jointIndex, const DirectX::XMMATRI
     // run through all of these in a flat way, then update
     Joint& currentJoint = m_joints[jointIndex];
 
-    DirectX::XMMATRIX finalTransform = XMLoadFloat4x4(&currentJoint.animatedTransform) * parentTransform;
+    DirectX::XMMATRIX finalTransform = XMLoadFloat4x4(&currentJoint.finalTransform) * parentTransform;
 
     XMStoreFloat4x4(&currentJoint.finalTransform, finalTransform);
 

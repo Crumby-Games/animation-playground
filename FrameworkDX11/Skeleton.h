@@ -7,6 +7,27 @@
 #include "AnimGraph.h"
 #include "Animation.h"
 
+
+struct ComponentTransform {
+    DirectX::XMFLOAT3 translation;
+    DirectX::XMFLOAT4 rotation;
+    DirectX::XMFLOAT3 scale;
+
+    DirectX::XMVECTOR Scale() {
+        return DirectX::XMLoadFloat3(&scale);
+    }
+    DirectX::XMVECTOR Rotation() {
+        return DirectX::XMLoadFloat4(&rotation);
+    }
+    DirectX::XMVECTOR Translation() {
+        return DirectX::XMLoadFloat3(&translation);
+    }
+
+    DirectX::XMMATRIX Matrix() {
+        return DirectX::XMMatrixScalingFromVector(Scale()) * DirectX::XMMatrixRotationQuaternion(Rotation()) * DirectX::XMMatrixTranslationFromVector(Translation());
+    }
+};
+
 struct Joint
 {
     // The name of the joint, useful for debugging.
@@ -20,6 +41,8 @@ struct Joint
 
     // Indices of the children of this joint in the skeleton's main joint list.
     std::vector<int> children;
+
+    ComponentTransform componentTransform{};
 
     DirectX::XMFLOAT4X4 animatedTransform{};
 
@@ -63,8 +86,12 @@ private:
     // Change the signature to accept a pointer.
     void UpdateJointGlobalTransform(int jointIndex, const DirectX::XMMATRIX& parentTransform);
 
-    void ApplyAnimNode(AnimNode* node, float weight = 1);
-
+    std::map<int, ComponentTransform> ApplyAnimNode(AnimNode* node);
+    ComponentTransform GetLocalAnimatedTransformForJoint(
+        int jointIndex,
+        const Animation* animation, // Use a pointer to allow for nullptr
+        float timeInSeconds
+    );
 
     // The flat list of all joints that make up this skeleton.
     std::vector<Joint> m_joints;
