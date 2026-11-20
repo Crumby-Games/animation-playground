@@ -228,6 +228,7 @@ public:
 
 
     void AnimateFrame(IRenderingContext& ctx);
+    std::vector<SceneNode*>& GetSkeletonNodes() { return mSkeletonNodes; }
     SceneNode* CreateRootNode();
     SceneNode* GetRootNode(unsigned int i) { return &mRootNodes[i]; }
 
@@ -280,6 +281,7 @@ private:
 
     // Geometry
     std::vector<SceneNode>      mRootNodes;
+    std::vector<SceneNode*>     mSkeletonNodes;
 
     // Shaders
     ID3D11VertexShader*         mVertexShader = nullptr;

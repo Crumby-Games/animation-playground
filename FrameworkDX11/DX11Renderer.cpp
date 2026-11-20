@@ -505,7 +505,11 @@ static void displayAnimGraph(std::shared_ptr<BaseAnimNode> node, std::vector<Ani
     
     if (node->IsBlendNode()) {
         auto blendNode = std::static_pointer_cast<BlendNode>(node);
-        ImGui::SliderFloat(("Weight##"+ std::to_string(widget_id++)).c_str(), &blendNode->weight, 0, 1);
+
+        
+        ImGui::Text("> ");
+        ImGui::SameLine();
+        ImGui::SliderFloat(("Blend##"+ std::to_string(widget_id++)).c_str(), &blendNode->weight, 0, 1);
         ImGui::Indent();
         displayAnimGraph(blendNode->nodes.first, animations);
         displayAnimGraph(blendNode->nodes.second, animations);
@@ -513,20 +517,60 @@ static void displayAnimGraph(std::shared_ptr<BaseAnimNode> node, std::vector<Ani
     }
     else {
         auto animNode = std::static_pointer_cast<AnimNode>(node);
-        ImGui::Text(animations[animNode->anim_idx].m_name.c_str());
+        ImGui::Text(("> " + animations[animNode->anim_idx].m_name).c_str());
     }
 }
 
 
 static float transitionTime = 2.0f;
+
+
+static void displayAnimationDropdown(int id, std::vector<std::string>& animations, int& current, int exclude = -1) {
+    if (ImGui::BeginCombo(("##Anim"+std::to_string(id)).c_str(), animations[current].c_str()))
+    {
+        for (int n = 0; n < animations.size(); n++)
+        {
+            const bool is_selected = (current == n);
+            if (exclude != n && ImGui::Selectable((animations[n] + "##combodropdown" + std::to_string(id)).c_str(), is_selected))
+                current = n;
+
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+}
+
+
+static int selected_anim_1 = 0;
+static int selected_anim_2 = 1;
+static int selected_anim_single = 0;
+
 static void displaySkeletonControls(Skeleton& skeleton) {
     ImGui::SliderFloat(("Time to Transition##" + std::to_string(widget_id++)).c_str(), &transitionTime, 0, 10);
+    std::vector<std::string> anim_names = {};
     for (int anim_idx = 0; anim_idx < skeleton.GetAnimationCount(); anim_idx++) {
-        Animation& anim = skeleton.GetAnimations()[anim_idx];
-        if (ImGui::Button(("Play " + anim.m_name + "##" + std::to_string(widget_id++)).c_str())) {
-            skeleton.GetAnimGraph().PlayAnimation(anim_idx, transitionTime);
-        }
+        anim_names.push_back(skeleton.GetAnimations()[anim_idx].m_name);
     }
+    displayAnimationDropdown(0, anim_names, selected_anim_single);
+    ImGui::SameLine();
+    if (ImGui::Button(("Play Individual##" + std::to_string(widget_id++)).c_str())) {
+        skeleton.GetAnimGraph().PlayAnimation(selected_anim_single, transitionTime);
+    }
+
+    ImGui::NewLine();
+    ImGui::SetNextItemWidth(200.0f);
+    displayAnimationDropdown(1, anim_names, selected_anim_1, selected_anim_2);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(200.0f);
+    displayAnimationDropdown(2, anim_names, selected_anim_2, selected_anim_1);
+    ImGui::SameLine();
+    if (ImGui::Button(("Play Blended##" + std::to_string(widget_id++)).c_str())) {
+        skeleton.GetAnimGraph().PlayBlendedAnimation(selected_anim_1, selected_anim_2, 0.5, transitionTime);
+    }
+
+
+    ImGui::NewLine();
     widget_id = 100;
     displayAnimGraph(skeleton.GetAnimGraph().root, skeleton.GetAnimations());
 
@@ -554,10 +598,13 @@ void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
     ImGui::DragFloat3("Light Position", &lightPos.x, 0.2,20,20);
 
 
-    ImGui::SeparatorText("Animation");
-    auto skeleton = m_pScene->m_sceneobject.GetRootNode(0)->GetSkeleton();
-    if (skeleton && skeleton->IsLoaded())
-        displaySkeletonControls(*skeleton);
+    int i = 0;
+    for (SceneNode* node : m_pScene->m_sceneobject.GetSkeletonNodes()) {
+        ImGui::SeparatorText(("Skeleton " + std::to_string(++i)).c_str());
+        ImGui::Indent();
+        displaySkeletonControls(*node->GetSkeleton());
+        ImGui::Unindent();
+    }
     
 
     // example usage

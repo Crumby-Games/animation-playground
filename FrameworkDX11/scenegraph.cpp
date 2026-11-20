@@ -507,9 +507,10 @@ bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
     // Nodes hierarchy
     out.clear();
     out.reserve(scene.nodes.size());
+    bool isRoot = &out == &mRootNodes;
     for (const auto nodeIdx : scene.nodes)
     {
-        SceneNode sceneNode(true);
+        SceneNode sceneNode(isRoot);
 
         printMeshNames(model);
         printSkinAndBones(model);
@@ -517,13 +518,14 @@ bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
         printAnimations(model);
 
         sceneNode.m_skeleton.LoadFromGltf(model);
-
+        
         sceneNode.m_skeleton.Update(0);
         
         if (!LoadSceneNodeFromGLTF(ctx, sceneNode, model, nodeIdx, logPrefix + L"   "))
             return false;
         //mRootNodes.push_back(std::move(sceneNode));
         out.push_back(sceneNode);
+        mSkeletonNodes.push_back(&out.back());
     }
 
     return true;

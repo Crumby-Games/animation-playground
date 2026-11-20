@@ -13,9 +13,16 @@ void AnimGraph::Update(float delta) {
 };
 
 void AnimGraph::PlayAnimation(const unsigned int animation, float transition) {
+
 	if (root && root->IsTransitionNode()) {
 		auto node = std::static_pointer_cast<TransitionNode>(root);
 		if (node->RightmostLeaf()->anim_idx == animation)
+			return;
+	}
+
+	if (root && !root->IsBlendNode()) {
+		auto node = std::static_pointer_cast<AnimNode>(root);
+		if (node->anim_idx == animation)
 			return;
 	}
 	auto node = std::make_shared<AnimNode>(animation);
