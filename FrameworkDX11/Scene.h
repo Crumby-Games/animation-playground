@@ -41,6 +41,8 @@ public:
 	
 	const LightPropertiesConstantBuffer& getLightProperties() { return m_lightProperties; }
 
+protected:
+	int registerTexture(const wchar_t* path);
 private:
 	void setupLightProperties();
 	struct CustomConstantBuffer {
@@ -64,7 +66,7 @@ public:
 	SceneGraph m_sceneobject;
 
 private:
-
+	std::vector<ID3D11ShaderResourceView*> m_pTextures;
 	ID3D11ShaderResourceView* m_pTextureDiffuse;
 	ID3D11ShaderResourceView* m_pTextureNormal;
 	ID3D11ShaderResourceView* m_pTextureMetallic;

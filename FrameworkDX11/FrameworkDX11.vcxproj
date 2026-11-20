@@ -358,6 +358,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
+    <ClInclude Include="ScenePresets.h" />
     <ClInclude Include="AnimGraph.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="constants.h" />
@@ -394,6 +395,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
+    <ClCompile Include="ScenePresets.cpp" />
     <ClCompile Include="AnimGraph.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />

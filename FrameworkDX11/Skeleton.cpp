@@ -154,7 +154,8 @@ bool Skeleton::LoadFromGltf(const tinygltf::Model& model)
     }
 
     if (m_animationCount > 0) {
-        m_animGraph.PlayMixedAnimation(0, 2, 0.5);
+        m_animGraph.PlayAnimation(0);
+        m_animGraph.PlayAnimation(2, 10);
     }
     m_isLoaded = true;
     return true;
@@ -167,10 +168,9 @@ void Skeleton::Update(float deltaTime)
     // Load the root transform we found during loading.
     DirectX::XMMATRIX rootTransform = DirectX::XMLoadFloat4x4(&m_rootTransform);
 
-
     if (m_animGraph.root != nullptr) {
-        m_animGraph.root->Update(deltaTime);
-        for (auto& pair : ApplyAnimNode(m_animGraph.root.get())) {
+        m_animGraph.Update(deltaTime);
+        for (auto& pair : ApplyAnimNode(m_animGraph.root)) {
             Joint& joint = m_joints[pair.first];
             XMStoreFloat4x4(&joint.finalTransform, pair.second.Matrix());
         }
@@ -268,16 +268,16 @@ ComponentTransform Skeleton::GetLocalAnimatedTransformForJoint(
     return out;
 }
 
-std::map<int, ComponentTransform> Skeleton::ApplyAnimNode(AnimNode* node) {
-    if (node->IsBranch()) {
-        BlendNode* blend = static_cast<BlendNode*>(node);
+std::map<int, ComponentTransform> Skeleton::ApplyAnimNode(std::shared_ptr<BaseAnimNode> node) {
+    if (node->IsBlendNode()) {
+        auto blendNode = std::static_pointer_cast<BlendNode>(node);
         std::map<int, ComponentTransform> out = {};
 
-        auto transform1 = ApplyAnimNode(blend->from.get());
-        auto transform2 = ApplyAnimNode(blend->to.get());
+        auto transform1 = ApplyAnimNode(blendNode->nodes.first);
+        auto transform2 = ApplyAnimNode(blendNode->nodes.second);
         for (auto& pair : transform1) {
             Joint& joint = m_joints[pair.first];
-            XMVECTOR scale = XMVectorLerp(transform1[pair.first].Scale(), transform2[pair.first].Scale(), blend->weight);
+            XMVECTOR scale = XMVectorLerp(transform1[pair.first].Scale(), transform2[pair.first].Scale(), blendNode->weight);
 
             XMVECTOR q1 = transform1[pair.first].Rotation();
             XMVECTOR q2 = transform2[pair.first].Rotation();
@@ -285,8 +285,8 @@ std::map<int, ComponentTransform> Skeleton::ApplyAnimNode(AnimNode* node) {
             if (XMVectorGetX(XMVector4Dot(q1, q2)) < 0.0f) {
                 q2 = XMVectorNegate(q2);
             }
-            XMVECTOR rotation = XMQuaternionSlerp(q1, q2, blend->weight);
-            XMVECTOR translation = XMVectorLerp(transform1[pair.first].Translation(), transform2[pair.first].Translation(), blend->weight);
+            XMVECTOR rotation = XMQuaternionSlerp(q1, q2, blendNode->weight);
+            XMVECTOR translation = XMVectorLerp(transform1[pair.first].Translation(), transform2[pair.first].Translation(), blendNode->weight);
             out[pair.first] = {};
             XMStoreFloat3(&out[pair.first].scale, scale);
             XMStoreFloat4(&out[pair.first].rotation, rotation);
@@ -295,8 +295,8 @@ std::map<int, ComponentTransform> Skeleton::ApplyAnimNode(AnimNode* node) {
         return out;
     }
     else {
-        AnimInstance* instance = static_cast<AnimInstance*>(node);
-        Animation& anim = m_animations[instance->anim_idx];
+        auto animNode = std::static_pointer_cast<AnimNode>(node);
+        Animation& anim = m_animations[animNode->anim_idx];
         float animation_time = std::fmod(m_lifetime, anim.GetEndTime() - anim.GetStartTime()) + anim.GetStartTime();
         std::map<int, ComponentTransform> out = {};
 

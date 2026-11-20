@@ -2,66 +2,76 @@
 
 #include <memory>
 
-class AnimNode
+class BaseAnimNode
 {
 public:
-	virtual bool IsBranch() = 0;
 	virtual void Update(float delta) {};
-	
-	virtual ~AnimNode() = default;
+	virtual bool Expired() { return false; }
+	virtual std::shared_ptr<BaseAnimNode> Replacement() { return nullptr; }
+	virtual bool IsBlendNode() { return false; };
+	virtual bool IsTransitionNode() { return false; };
+	virtual ~BaseAnimNode() = default;
 protected:
-	AnimNode() {};
+	BaseAnimNode() {};
 };
 
-struct AnimInstance : public AnimNode
+struct AnimNode : public BaseAnimNode
 {
 	unsigned int anim_idx;
-	bool IsBranch() override { return false; };
-	AnimInstance(const unsigned int animation) : anim_idx(animation) {
+	AnimNode(const unsigned int animation) : anim_idx(animation) {
 	};
+	
 };
 
-struct BlendNode : public AnimNode {
-	std::shared_ptr<AnimNode> from;
-	std::shared_ptr<AnimNode> to;
-	float weight = 0;
-	bool fixed = true;
+class BlendNode : public BaseAnimNode {
+public:
+	std::pair<std::shared_ptr<BaseAnimNode>, std::shared_ptr<BaseAnimNode>> nodes;
+	float weight;
+	BlendNode(std::shared_ptr<BaseAnimNode> node1, std::shared_ptr<BaseAnimNode> node2, float w) : nodes{ node1, node2 }, weight(w) {}
+	bool IsBlendNode() override { return true; }
+	void Update(float delta) override;
+	std::shared_ptr<AnimNode> RightmostLeaf() {
+		if (nodes.second->IsBlendNode()) {
+			auto node = std::static_pointer_cast<BlendNode>(nodes.second);
+			return node->RightmostLeaf();
+		}
+		else {
+			return std::static_pointer_cast<AnimNode>(nodes.second);
+		}
+	}
+private:
+	std::pair<float, float> weights;
+};
+
+class TransitionNode : public BlendNode {
+public:
+
+	TransitionNode(std::shared_ptr<BaseAnimNode> node1, std::shared_ptr<BaseAnimNode> node2, float time) : BlendNode(node1, node2, 0) {
+		time_factor = 1.0f / time;
+	}
+
+	bool IsTransitionNode() override { return true; }
+	void Update(float delta) override;
+
+	bool Expired() override { return weight >= 1; }
+	std::shared_ptr<BaseAnimNode> Replacement() override { return nodes.second; }
+
+private:
 	float time_factor = 1;
-
-	bool IsBranch() override {
-		return true;
-	};
-
-	BlendNode(AnimNode* fromNode, AnimNode* toNode, float transition = -1) : from(fromNode), to(toNode) {
-		if (transition > 0) {
-			fixed = false;
-			time_factor = 1 / transition;
-		}
-
-	}
-
-	void Update(float delta) override {
-		if (!fixed) {
-			weight += delta * time_factor;
-			if (weight > 1) weight = 1.0f;
-		}
-			
-		
-		from->Update(delta);
-		to->Update(delta);
-	}
-
+	bool expired = false;
 };
+
+
 
 class AnimGraph
 {
 public:
-	void PlayMixedAnimation(const unsigned int anim1, const unsigned int anim2, float weight = 0.5, float transition_time = 0);
+	void PlayBlendedAnimation(const unsigned int anim1, const unsigned int anim2, float weight = 0.5, float transition_time = 0);
 	void PlayAnimation(const unsigned int animation, float transition_time = 0);
-	void Update(float delta) { if (root.get()) root->Update(delta); };
+	void Update(float delta);
 	AnimGraph() {};
-	std::shared_ptr<AnimNode> root = nullptr;
+	std::shared_ptr<BaseAnimNode> root = nullptr;
 private:
-	void TransitionTo(AnimNode* node, float transition);
+	void TransitionTo(std::shared_ptr<BaseAnimNode> node, float transition);
 
 };

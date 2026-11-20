@@ -6,6 +6,7 @@
 #include "imgui/imgui_impl_dx11.h"
 #include "d3dcompiler.h"
 #include "AnimGraph.h"
+#include <format>
 
 // TRUE - PBR Rendering / FALSE - Animation Rendering
 constexpr bool PBR_MODE = true;
@@ -498,8 +499,44 @@ void DX11Renderer::CentreMouseInWindow(HWND hWnd)
 }
 
 
+static int widget_id = 0;
+
+static void displayAnimGraph(std::shared_ptr<BaseAnimNode> node, std::vector<Animation>& animations) {
+    
+    if (node->IsBlendNode()) {
+        auto blendNode = std::static_pointer_cast<BlendNode>(node);
+        ImGui::SliderFloat(("Weight##"+ std::to_string(widget_id++)).c_str(), &blendNode->weight, 0, 1);
+        ImGui::Indent();
+        displayAnimGraph(blendNode->nodes.first, animations);
+        displayAnimGraph(blendNode->nodes.second, animations);
+        ImGui::Unindent();
+    }
+    else {
+        auto animNode = std::static_pointer_cast<AnimNode>(node);
+        ImGui::Text(animations[animNode->anim_idx].m_name.c_str());
+    }
+}
+
+
+static float transitionTime = 2.0f;
+static void displaySkeletonControls(Skeleton& skeleton) {
+    ImGui::SliderFloat(("Time to Transition##" + std::to_string(widget_id++)).c_str(), &transitionTime, 0, 10);
+    for (int anim_idx = 0; anim_idx < skeleton.GetAnimationCount(); anim_idx++) {
+        Animation& anim = skeleton.GetAnimations()[anim_idx];
+        if (ImGui::Button(("Play " + anim.m_name + "##" + std::to_string(widget_id++)).c_str())) {
+            skeleton.GetAnimGraph().PlayAnimation(anim_idx, transitionTime);
+        }
+    }
+    widget_id = 100;
+    displayAnimGraph(skeleton.GetAnimGraph().root, skeleton.GetAnimations());
+
+
+}
+
+
 void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
 {
+    widget_id = 0;
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -516,11 +553,11 @@ void DX11Renderer::startIMGUIDraw(const unsigned int FPS)
     XMFLOAT4& lightPos = m_pScene->m_lightProperties.Lights[0].Position;
     ImGui::DragFloat3("Light Position", &lightPos.x, 0.2,20,20);
 
-    AnimNode* rootAnimNode = m_pScene->m_sceneobject.GetRootNode(0)->GetSkeleton()->GetAnimGraph().root.get();
-    if (rootAnimNode->IsBranch()) {
-        BlendNode* rootBlendNode = static_cast<BlendNode*>(rootAnimNode);
-        ImGui::SliderFloat("Blend Weight", &rootBlendNode->weight, 0, 1);
-    }
+
+    ImGui::SeparatorText("Animation");
+    auto skeleton = m_pScene->m_sceneobject.GetRootNode(0)->GetSkeleton();
+    if (skeleton && skeleton->IsLoaded())
+        displaySkeletonControls(*skeleton);
     
 
     // example usage

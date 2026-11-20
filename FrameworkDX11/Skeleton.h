@@ -44,8 +44,6 @@ struct Joint
 
     ComponentTransform componentTransform{};
 
-    DirectX::XMFLOAT4X4 animatedTransform{};
-
     DirectX::XMFLOAT4X4 finalTransform{};
 
     // The final transform of the bone in model space for the current animation frame.
@@ -73,6 +71,7 @@ public:
 
     AnimGraph& GetAnimGraph() { return m_animGraph; }
     unsigned int GetAnimationCount() { return m_animationCount; }
+    std::vector<Animation>& GetAnimations() { return m_animations; }
     bool IsLoaded() { return m_isLoaded; }
 
     int AddJoint(int parentIndex, const DirectX::XMFLOAT4X4& localBindTransform);
@@ -86,7 +85,7 @@ private:
     // Change the signature to accept a pointer.
     void UpdateJointGlobalTransform(int jointIndex, const DirectX::XMMATRIX& parentTransform);
 
-    std::map<int, ComponentTransform> ApplyAnimNode(AnimNode* node);
+    std::map<int, ComponentTransform> ApplyAnimNode(std::shared_ptr<BaseAnimNode> node);
     ComponentTransform GetLocalAnimatedTransformForJoint(
         int jointIndex,
         const Animation* animation, // Use a pointer to allow for nullptr

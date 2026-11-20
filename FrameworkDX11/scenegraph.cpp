@@ -428,7 +428,7 @@ bool SceneGraph::LoadGLTF(IRenderingContext &ctx,
 }
 
 bool SceneGraph::LoadGLTFWithSkeleton(IRenderingContext& ctx,
-    const std::wstring& filePath)
+    const std::wstring& filePath, SceneNode* parent)
 {
     using namespace std;
 
@@ -439,7 +439,7 @@ bool SceneGraph::LoadGLTFWithSkeleton(IRenderingContext& ctx,
     if (!GltfUtils::LoadModel(model, filePath))
         return false;
 
-    if (!LoadSceneFromGltfWithSkeleton(ctx, model, logPrefix))
+    if (!LoadSceneFromGltfWithSkeleton(ctx, model, logPrefix, parent ? parent->mChildren : mRootNodes))
         return false;
 
 //    SetupDefaultLights();
@@ -448,6 +448,7 @@ bool SceneGraph::LoadGLTFWithSkeleton(IRenderingContext& ctx,
 
     return true;
 }
+
 
 bool SceneGraph::LoadSceneFromGltf(IRenderingContext &ctx,
                               const tinygltf::Model &model,
@@ -484,7 +485,9 @@ bool SceneGraph::LoadSceneFromGltf(IRenderingContext &ctx,
 
 bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
     const tinygltf::Model& model,
-    const std::wstring& logPrefix)
+    const std::wstring& logPrefix,
+    std::vector<SceneNode>& out
+    )
 {
     // Choose one scene
     if (model.scenes.size() < 1)
@@ -502,8 +505,8 @@ bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
         scene.nodes.size());
 
     // Nodes hierarchy
-    mRootNodes.clear();
-    mRootNodes.reserve(scene.nodes.size());
+    out.clear();
+    out.reserve(scene.nodes.size());
     for (const auto nodeIdx : scene.nodes)
     {
         SceneNode sceneNode(true);
@@ -520,7 +523,7 @@ bool SceneGraph::LoadSceneFromGltfWithSkeleton(IRenderingContext& ctx,
         if (!LoadSceneNodeFromGLTF(ctx, sceneNode, model, nodeIdx, logPrefix + L"   "))
             return false;
         //mRootNodes.push_back(std::move(sceneNode));
-        mRootNodes.push_back(sceneNode);
+        out.push_back(sceneNode);
     }
 
     return true;

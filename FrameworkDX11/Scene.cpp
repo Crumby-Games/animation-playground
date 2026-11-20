@@ -33,10 +33,7 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     if (FAILED(hr))
         return hr;
 
-    bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(CustomConstantBuffer);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
     hr = m_pd3dDevice->CreateBuffer(&bd, nullptr, &m_pCustomConstantBuffer);
     if (FAILED(hr))
         return hr;
@@ -53,36 +50,14 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
         return hr;
 
 
+    registerTexture(L"Resources\\fox_dif.dds");
+    registerTexture(L"Resources\\fur_metal.dds");
+    registerTexture(L"Resources\\fur_roughness.dds");
+    registerTexture(L"Resources\\fur_ao.dds");
+    registerTexture(L"Resources\\fur_normal.dds");
+    registerTexture(L"Resources\\DiffuseCM.dds");
+    registerTexture(L"Resources\\SpecularCM.dds");
 
-    // load and setup textures
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fox_dif.dds", nullptr, &m_pTextureDiffuse);
-    if (FAILED(hr))
-        return hr;
-
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_metal.dds", nullptr, &m_pTextureMetallic);
-    if (FAILED(hr))
-        return hr;
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_roughness.dds", nullptr, &m_pTextureRoughness);
-    if (FAILED(hr))
-        return hr;
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_ao.dds", nullptr, &m_pTextureAmbientOcclusion);
-    if (FAILED(hr))
-        return hr;
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\fur_normal.dds", nullptr, &m_pTextureNormal);
-    if (FAILED(hr))
-        return hr;
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\DiffuseCM.dds", nullptr, &m_pTextureDiffuseIBL);
-    if (FAILED(hr))
-        return hr;
-
-    hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Resources\\SpecularCM.dds", nullptr, &m_pTextureSpecularIBL);
-    if (FAILED(hr))
-        return hr;
 
     D3D11_SAMPLER_DESC sampDesc;
     ZeroMemory(&sampDesc, sizeof(sampDesc));
@@ -94,10 +69,18 @@ HRESULT Scene::init(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Device>& devic
     sampDesc.MinLOD = 0;
     sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
     hr = m_pd3dDevice->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
-
-    
+    if (FAILED(hr))
+        return hr;
 
     return S_OK;
+}
+
+int Scene::registerTexture(const wchar_t* path) {
+    ID3D11ShaderResourceView* srv;
+    HRESULT hr = CreateDDSTextureFromFile(m_pd3dDevice.Get(), path, nullptr, &srv);
+    assert(!FAILED(hr));
+    m_pTextures.push_back(srv);
+    return m_pTextures.size() - 1;
 }
 
 void Scene::cleanUp()
@@ -127,16 +110,10 @@ void Scene::setupLightProperties()
 void Scene::update(const float deltaTime)
 {
     m_timeElapsed += deltaTime;
-    ID3D11ShaderResourceView* textures[] = { m_pTextureDiffuse, m_pTextureMetallic, m_pTextureRoughness, m_pTextureAmbientOcclusion, m_pTextureNormal, m_pTextureDiffuseIBL, m_pTextureSpecularIBL };
 
-    m_pImmediateContext->PSSetShaderResources(0, 7, textures);
+    m_pImmediateContext->PSSetShaderResources(0, m_pTextures.size(), m_pTextures.data());
     m_pImmediateContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
   
-    ConstantBuffer cb;
-    cb.mView = XMMatrixTranspose(getCamera()->getViewMatrix());
-    cb.mProjection = XMMatrixTranspose(getCamera()->getProjectionMatrix());
-    cb.vOutputColor = XMFLOAT4(0, 0, 0, 0);
-
     CustomConstantBuffer ccb;
     ccb.gTime = m_timeElapsed;
 

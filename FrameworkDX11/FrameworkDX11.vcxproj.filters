@@ -73,6 +73,9 @@
     <ClCompile Include="AnimGraph.cpp">
       <Filter>Animation</Filter>
     </ClCompile>
+    <ClCompile Include="ScenePresets.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imgui_impl_win32.h">
@@ -176,6 +179,9 @@
     </ClInclude>
     <ClInclude Include="AnimGraph.h">
       <Filter>Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="ScenePresets.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

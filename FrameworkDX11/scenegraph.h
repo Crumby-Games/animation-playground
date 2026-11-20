@@ -213,7 +213,7 @@ public:
 
     bool LoadSphere(IRenderingContext& ctx);
     bool LoadGLTF(IRenderingContext& ctx, const std::wstring& filePath);
-    bool LoadGLTFWithSkeleton(IRenderingContext& ctx, const std::wstring& filePath);
+    bool LoadGLTFWithSkeleton(IRenderingContext& ctx, const std::wstring& filePath, SceneNode* parent = nullptr);
 
     // Transformations
     void AddScaleToRoots(double scale);
@@ -249,9 +249,14 @@ private:
         const tinygltf::Model& model,
         const std::wstring& logPrefix);
 
+
+
     bool LoadSceneFromGltfWithSkeleton(IRenderingContext &ctx,
                            const tinygltf::Model &model,
-                           const std::wstring &logPrefix);
+                           const std::wstring &logPrefix,
+                           std::vector<SceneNode>& out
+    );
+
 
     bool LoadSceneNodeFromGLTF(IRenderingContext &ctx,
                                SceneNode &sceneNode,
